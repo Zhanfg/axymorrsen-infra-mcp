@@ -65,7 +65,6 @@ export function createInfraMcpServer(): McpServer {
             id: z.string(),
             displayName: z.string(),
             status: z.enum(["available", "planned", "disabled", "degraded"]),
-            credentialRef: z.string().optional(),
           }),
         ),
       }),
