@@ -4,6 +4,7 @@ import {
   it,
 } from "vitest";
 import {
+  isConcreteResource,
   isValidResourcePattern,
   resourceMatches,
   resourcesAllowed,
@@ -26,7 +27,7 @@ describe("resource authorization", () => {
     ).toBe(false);
   });
 
-  it("supports suffix wildcard prefixes only", () => {
+  it("supports suffix wildcard prefixes only in grants", () => {
     expect(
       resourceMatches(
         "github:repo:example/*",
@@ -37,6 +38,27 @@ describe("resource authorization", () => {
     expect(
       isValidResourcePattern(
         "github:*:example",
+      ),
+    ).toBe(false);
+  });
+
+  it("never accepts a wildcard as a concrete execution target", () => {
+    expect(
+      isConcreteResource(
+        "github:repo:example/project",
+      ),
+    ).toBe(true);
+
+    expect(
+      isConcreteResource(
+        "github:repo:example/*",
+      ),
+    ).toBe(false);
+
+    expect(
+      resourceMatches(
+        "github:repo:example/*",
+        "github:repo:example/*",
       ),
     ).toBe(false);
   });
