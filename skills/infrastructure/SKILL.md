@@ -5,7 +5,7 @@ Use this skill only as an enhancement. The MCP server must remain fully usable t
 ## First-use workflow
 
 1. Call `infra.capabilities` and `infra.providers`.
-2. Read `docs://authentication`, `docs://providers/core4`, and `docs://security` when the task touches remote access or mutations.
+2. Read `docs://authentication`, `docs://providers/core4`, `docs://providers/platform5`, and `docs://security` when the task touches remote access or mutations.
 3. Call `infra.permissions` when authorization is uncertain.
 4. Use `infra.explain_tool` before unfamiliar or high-risk actions.
 5. Read the current resource state before mutation when practical.
@@ -53,6 +53,38 @@ CircleCI:
 - `circleci.pipeline.trigger`
 - `circleci.workflow.cancel`
 - `circleci.workflow.rerun`
+
+## Platform provider pack
+
+Vercel:
+- `vercel.project.get`
+- `vercel.deployment.list`
+- `vercel.deployment.cancel`
+
+Railway:
+- `railway.project.get`
+- `railway.service_instance.get`
+- `railway.service.deploy`
+
+Supabase:
+- `supabase.project.get`
+- `supabase.branch.list`
+- `supabase.branch.get`
+- `supabase.branch.create`
+
+Sentry:
+- `sentry.issue.get`
+- `sentry.issue.event.get`
+- `sentry.issue.update`
+
+HCP Terraform:
+- `terraform.workspace.get`
+- `terraform.run.list`
+- `terraform.run.plan`
+- `terraform.run.apply`
+- `terraform.run.cancel`
+
+Terraform run creation is deliberately plan-only. Applying a plan is classified as destructive and requires step-up authorization. Secrets/API-key mutation surfaces are not exposed for Vercel or Supabase, and Sentry merge/discard/public-sharing operations are intentionally omitted.
 
 ## Operating principles
 

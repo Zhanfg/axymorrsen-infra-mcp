@@ -41,6 +41,18 @@ const resources:
     },
     {
       name:
+        "platform-provider-guide",
+      uri:
+        "docs://providers/platform5",
+      path:
+        "docs/providers/platform5.md",
+      title:
+        "Platform provider pack",
+      description:
+        "Vercel, Railway, Supabase, Sentry and HCP Terraform capabilities and safety boundaries.",
+    },
+    {
+      name:
         "bridge-guide",
       uri:
         "docs://bridge",
