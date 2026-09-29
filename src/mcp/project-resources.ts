@@ -65,6 +65,18 @@ const resources:
     },
     {
       name:
+        "secret-backend-guide",
+      uri:
+        "docs://secrets",
+      path:
+        "docs/secrets.md",
+      title:
+        "Secret backend guide",
+      description:
+        "Server-side environment and Vault KV v2 credential resolution.",
+    },
+    {
+      name:
         "bridge-guide",
       uri:
         "docs://bridge",

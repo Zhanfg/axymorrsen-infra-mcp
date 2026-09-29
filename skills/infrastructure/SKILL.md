@@ -5,7 +5,7 @@ Use this skill only as an enhancement. The MCP server must remain fully usable t
 ## First-use workflow
 
 1. Call `infra.capabilities` and `infra.providers`.
-2. Read `docs://authentication`, `docs://providers/core4`, `docs://providers/platform5`, `docs://providers/runtime3`, and `docs://security` when the task touches remote access or mutations.
+2. Read `docs://authentication`, `docs://secrets`, `docs://providers/core4`, `docs://providers/platform5`, `docs://providers/runtime3`, and `docs://security` when the task touches remote access or mutations.
 3. Call `infra.permissions` when authorization is uncertain.
 4. Use `infra.explain_tool` before unfamiliar or high-risk actions.
 5. Read the current resource state before mutation when practical.
@@ -109,6 +109,16 @@ HashiCorp Vault:
 - `vault.kv.metadata.delete`
 
 Docker Hub credentials are exchanged server-side for a short-lived Hub bearer token and are never exposed to MCP clients. Kubernetes scaling uses the scale subresource plus a resourceVersion precondition and requires step-up authorization. Vault tools operate only on KV v2 metadata; no tool in this pack reads or writes secret values. Metadata update/delete require step-up authorization.
+
+## Secret backends
+
+Provider credentials may use explicit `env:` or `vault-kv2:` references. A Vault KV v2 reference has the form:
+
+```text
+vault-kv2:<mount>/<path>#<field>
+```
+
+The MCP client never receives the resolved value. Vault's own bootstrap token remains outside the same resolver to avoid circular dependency. Prefer a narrowly scoped bootstrap token that can read only the provider credential paths.
 
 ## Operating principles
 
