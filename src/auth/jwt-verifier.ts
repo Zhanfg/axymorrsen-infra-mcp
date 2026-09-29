@@ -71,7 +71,7 @@ export function authInfoFromJwtPayload(
     clientId,
     scopes: scopesFromPayload(payload),
     expiresAt: payload.exp,
-    resource: config.resourceUrl.toString(),
+    resource: config.resourceUrl,
     extra: {
       subject,
       allowedResources,
