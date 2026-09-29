@@ -23,10 +23,10 @@ export interface ResourceServerAuth {
 export function createResourceServerAuth(
   config: RuntimeConfig,
 ): ResourceServerAuth | undefined {
-  if (!config.auth || !publicMcpUrl) return undefined;
+  if (!config.auth || !config.publicMcpUrl) return undefined;
 
   const authConfig = config.auth;
-  const publicMcpUrl = publicMcpUrl;
+  const publicMcpUrl = config.publicMcpUrl;
 
   const resourceMetadataUrl = String(
     getOAuthProtectedResourceMetadataUrl(publicMcpUrl),
@@ -35,7 +35,7 @@ export function createResourceServerAuth(
 
   const options: BearerAuthOptions = {
     verifier: createJwtTokenVerifier({
-      ...config.auth,
+      ...authConfig,
       resourceUrl: publicMcpUrl,
     }),
     requiredScopes: authConfig.requiredScopes,
