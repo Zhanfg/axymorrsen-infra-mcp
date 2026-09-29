@@ -18,7 +18,11 @@ GitHub, GitLab, Cloudflare, CircleCI, Vercel, Railway, Supabase, Docker Hub, Ter
 
 Clients receive scoped MCP authorization only. Provider credentials are stored outside the repository and resolved server-side through a secret backend. Destructive, security-sensitive, and billing actions are separated from ordinary reads and writes.
 
-See [docs/security.md](docs/security.md) and [docs/architecture.md](docs/architecture.md).
+See [docs/security.md](docs/security.md), [docs/architecture.md](docs/architecture.md), and [docs/compatibility.md](docs/compatibility.md).
+
+## Repository boundary
+
+This public repository contains reusable code, schemas, documentation, and deployment templates. Personal infrastructure configuration, allowlists, production mappings, and secrets belong outside this repository.
 
 ## Status
 

@@ -1,0 +1,27 @@
+# Dependencies and build output
+node_modules/
+dist/
+coverage/
+.tmp/
+.cache/
+
+# Local environment
+.env
+.env.*
+!.env.example
+
+# Secrets and credentials
+*.pem
+*.key
+*.p12
+*.pfx
+*.jks
+*.keystore
+credentials.json
+secrets.*
+!secrets.example.*
+
+# IDE / OS
+.DS_Store
+.idea/
+.vscode/
