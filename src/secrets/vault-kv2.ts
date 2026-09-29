@@ -6,7 +6,7 @@ import {
 } from "./resolver.js";
 
 const REFERENCE =
-  /^vault-kv2:([A-Za-z0-9._-]+)\\/([^#]+)#([A-Za-z0-9._-]+)$/u;
+  /^vault-kv2:([A-Za-z0-9._-]+)\/([^#]+)#([A-Za-z0-9._-]+)$/u;
 
 export interface VaultKv2SecretResolverOptions {
   baseUrl: string | URL;
