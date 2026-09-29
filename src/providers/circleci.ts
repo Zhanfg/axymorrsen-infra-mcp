@@ -5,30 +5,30 @@ import type {
   ProviderDescriptor,
   ProviderResult,
 } from "../core/types.js";
-import type {
-  Provider,
-} from "../core/provider.js";
-import type {
-  SecretResolver,
-} from "../secrets/resolver.js";
-import {
-  ProviderBase,
-} from "./base.js";
+import type { Provider } from "../core/provider.js";
+import type { SecretResolver } from "../secrets/resolver.js";
+import { ProviderBase } from "./base.js";
 import {
   jsonBody,
   objectValue,
   type FetchLike,
 } from "./http.js";
 
+const projectSlugSchema =
+  z.string().regex(
+    /^(?:github|gh|bitbucket|bb|circleci)\/[^/\s]+\/[^/\s]+$/u,
+    "CircleCI project slug must be provider/org/project",
+  );
+
 const projectSchema = z.object({
   projectSlug:
-    z.string().min(3),
+    projectSlugSchema,
 });
 
 const triggerSchema =
   projectSchema.extend({
     definitionId:
-      z.string().min(1),
+      z.string().uuid(),
     ref: z.object({
       type: z.enum([
         "branch",

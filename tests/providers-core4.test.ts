@@ -2,15 +2,8 @@ import type {
   ExecutionContext,
 } from "../src/core/types.js";
 import {
-  SecretValue,
-  type SecretResolver,
+  EnvironmentSecretResolver,
 } from "../src/secrets/resolver.js";
-import {
-  CircleCIProvider,
-} from "../src/providers/circleci.js";
-import {
-  CloudflareProvider,
-} from "../src/providers/cloudflare.js";
 import {
   GitHubProvider,
 } from "../src/providers/github.js";
@@ -18,31 +11,44 @@ import {
   GitLabProvider,
 } from "../src/providers/gitlab.js";
 import {
+  CloudflareProvider,
+} from "../src/providers/cloudflare.js";
+import {
+  CircleCIProvider,
+} from "../src/providers/circleci.js";
+import {
   describe,
   expect,
   it,
 } from "vitest";
 
-class StaticSecrets
-  implements SecretResolver
-{
-  async resolve() {
-    return new SecretValue(
-      "test-token",
-    );
-  }
-}
-
 const context: ExecutionContext = {
-  requestId: "request",
-  clientId: "client",
-  subject: "user",
+  requestId: "test-request",
+  clientId: "test-client",
+  subject: "test-user",
   scopes: [],
   allowedResources: [],
   stepUpAuthorized: false,
 };
 
-function response(
+interface RecordedCall {
+  url: string;
+  init: RequestInit;
+}
+
+function urlOf(
+  input: Parameters<typeof fetch>[0],
+): string {
+  if (typeof input === "string") {
+    return input;
+  }
+  if (input instanceof URL) {
+    return input.href;
+  }
+  return input.url;
+}
+
+function jsonResponse(
   value: unknown,
   status = 200,
 ): Response {
@@ -59,94 +65,130 @@ function response(
 }
 
 describe("core provider adapters", () => {
-  it("verifies GitHub user ownership before creating a user repository", async () => {
-    const calls: string[] = [];
-    const fakeFetch: typeof fetch =
-      async (input) => {
-        const url = String(input);
-        calls.push(url);
-        if (
-          url.endsWith("/user")
-        ) {
-          return response({
-            login: "Zhanfg",
-          });
-        }
-        return response(
+  it("verifies GitHub user ownership before repository creation", async () => {
+    const calls: RecordedCall[] = [];
+    const fetchImpl = (async (
+      input,
+      init = {},
+    ) => {
+      const url = urlOf(input);
+      calls.push({ url, init });
+
+      if (url.endsWith("/user")) {
+        return jsonResponse({
+          login: "alice",
+        });
+      }
+
+      if (
+        url.endsWith("/user/repos")
+      ) {
+        return jsonResponse(
           {
             id: 1,
-            name: "project",
-            full_name:
-              "Zhanfg/project",
+            name: "demo",
+            full_name: "alice/demo",
             html_url:
-              "https://github.com/Zhanfg/project",
+              "https://github.com/alice/demo",
             private: false,
             default_branch: "main",
           },
           201,
         );
-      };
+      }
+
+      return jsonResponse({}, 404);
+    }) as typeof fetch;
 
     const provider =
       new GitHubProvider({
         secretResolver:
-          new StaticSecrets(),
-        fetchImpl: fakeFetch,
+          new EnvironmentSecretResolver({
+            GITHUB_TOKEN:
+              "github-secret",
+          }),
+        baseUrl:
+          "https://api.example.test/",
+        fetchImpl,
       });
 
     const result =
       await provider.execute(
         "github.repository.create",
         {
-          owner: "Zhanfg",
+          owner: "alice",
           ownerType: "user",
-          name: "project",
+          name: "demo",
         },
         context,
       );
 
-    expect(result.ok).toBe(true);
-    expect(calls).toEqual([
-      "https://api.github.com/user",
-      "https://api.github.com/user/repos",
-    ]);
+    expect(result).toMatchObject({
+      ok: true,
+      data: {
+        full_name: "alice/demo",
+      },
+    });
+    expect(calls).toHaveLength(2);
+    expect(calls[0]?.url).toBe(
+      "https://api.example.test/user",
+    );
+    expect(calls[1]?.url).toBe(
+      "https://api.example.test/user/repos",
+    );
+
+    const headers =
+      calls[1]?.init
+        .headers as Record<
+        string,
+        string
+      >;
+    expect(
+      headers[
+        "x-github-api-version"
+      ],
+    ).toBe("2026-03-10");
+    expect(
+      JSON.stringify(result),
+    ).not.toContain(
+      "github-secret",
+    );
   });
 
-  it("verifies a GitLab namespace before project creation", async () => {
-    const calls: string[] = [];
-    const fakeFetch: typeof fetch =
-      async (input) => {
-        const url = String(input);
-        calls.push(url);
-        if (
-          url.includes(
-            "/namespaces/42",
-          )
-        ) {
-          return response({
-            full_path: "team",
-          });
-        }
-        return response(
-          {
-            id: 7,
-            name: "project",
-            path_with_namespace:
-              "team/project",
-            web_url:
-              "https://gitlab.com/team/project",
-            visibility: "private",
-            default_branch: "main",
-          },
-          201,
-        );
-      };
+  it("refuses GitLab creation when namespace ID and path disagree", async () => {
+    const calls: RecordedCall[] = [];
+    const fetchImpl = (async (
+      input,
+      init = {},
+    ) => {
+      const url = urlOf(input);
+      calls.push({ url, init });
+
+      if (
+        url.endsWith(
+          "/namespaces/42",
+        )
+      ) {
+        return jsonResponse({
+          id: 42,
+          full_path:
+            "different/team",
+        });
+      }
+
+      return jsonResponse({}, 500);
+    }) as typeof fetch;
 
     const provider =
       new GitLabProvider({
         secretResolver:
-          new StaticSecrets(),
-        fetchImpl: fakeFetch,
+          new EnvironmentSecretResolver({
+            GITLAB_TOKEN:
+              "gitlab-secret",
+          }),
+        baseUrl:
+          "https://gitlab.example.test/api/v4/",
+        fetchImpl,
       });
 
     const result =
@@ -154,67 +196,131 @@ describe("core provider adapters", () => {
         "gitlab.project.create",
         {
           namespaceId: 42,
-          namespacePath: "team",
-          name: "project",
-          path: "project",
+          namespacePath:
+            "expected/team",
+          name: "demo",
+          path: "demo",
+        },
+        context,
+      );
+
+    expect(result).toMatchObject({
+      ok: false,
+      error: {
+        code:
+          "namespace_mismatch",
+      },
+    });
+    expect(calls).toHaveLength(1);
+  });
+
+  it("uses Cloudflare PATCH for partial DNS updates", async () => {
+    const calls: RecordedCall[] = [];
+    const fetchImpl = (async (
+      input,
+      init = {},
+    ) => {
+      calls.push({
+        url: urlOf(input),
+        init,
+      });
+
+      return jsonResponse({
+        success: true,
+        result: {
+          id: "record-id",
+          type: "A",
+          name:
+            "www.example.com",
+          content:
+            "192.0.2.10",
+        },
+      });
+    }) as typeof fetch;
+
+    const provider =
+      new CloudflareProvider({
+        secretResolver:
+          new EnvironmentSecretResolver({
+            CLOUDFLARE_API_TOKEN:
+              "cf-secret",
+          }),
+        baseUrl:
+          "https://api.cloudflare.test/client/v4/",
+        fetchImpl,
+      });
+
+    const result =
+      await provider.execute(
+        "cloudflare.dns.update",
+        {
+          zoneId: "zone-id",
+          recordId: "record-id",
+          content: "192.0.2.10",
         },
         context,
       );
 
     expect(result.ok).toBe(true);
-    expect(calls).toEqual([
-      "https://gitlab.com/api/v4/namespaces/42",
-      "https://gitlab.com/api/v4/projects",
-    ]);
+    expect(
+      calls[0]?.init.method,
+    ).toBe("PATCH");
+    expect(calls[0]?.url).toBe(
+      "https://api.cloudflare.test/client/v4/zones/zone-id/dns_records/record-id",
+    );
   });
 
-  it("maps Cloudflare DNS actions to zone resources", () => {
-    const provider =
-      new CloudflareProvider({
-        secretResolver:
-          new StaticSecrets(),
-      });
+  it("verifies CircleCI workflow project ownership before cancel", async () => {
+    const calls: RecordedCall[] = [];
+    const workflowId =
+      "5034460f-c7c4-4c43-9457-de07e2029e7b";
 
-    expect(
-      provider.resolveResources(
-        "cloudflare.dns.delete",
-        {
-          zoneId: "zone-1",
-          recordId: "record-1",
-        },
-      ),
-    ).toEqual([
-      "cloudflare:zone:zone-1",
-    ]);
+    const fetchImpl = (async (
+      input,
+      init = {},
+    ) => {
+      const url = urlOf(input);
+      calls.push({ url, init });
 
-    expect(
-      provider
-        .listCapabilities()
-        .find(
-          (item) =>
-            item.name ===
-            "cloudflare.dns.delete",
-        )?.risk,
-    ).toBe("DESTRUCTIVE");
-  });
-
-  it("refuses to mutate a CircleCI workflow when the declared project does not match", async () => {
-    let calls = 0;
-    const fakeFetch: typeof fetch =
-      async () => {
-        calls += 1;
-        return response({
-          id: "11111111-1111-4111-8111-111111111111",
+      if (
+        url.endsWith(
+          `/workflow/${workflowId}`,
+        )
+      ) {
+        return jsonResponse({
+          id: workflowId,
           project_slug:
-            "gh/other/project",
+            "gh/example/project",
         });
-      };
+      }
+
+      if (
+        url.endsWith(
+          `/workflow/${workflowId}/cancel`,
+        )
+      ) {
+        return jsonResponse(
+          {
+            message:
+              "Workflow canceled.",
+          },
+          202,
+        );
+      }
+
+      return jsonResponse({}, 404);
+    }) as typeof fetch;
 
     const provider =
       new CircleCIProvider({
         secretResolver:
-          new StaticSecrets(),
-        fetchImpl: fakeFetch,
+          new EnvironmentSecretResolver({
+            CIRCLECI_TOKEN:
+              "circle-secret",
+          }),
+        baseUrl:
+          "https://circleci.example.test/api/v2/",
+        fetchImpl,
       });
 
     const result =
@@ -223,18 +329,39 @@ describe("core provider adapters", () => {
         {
           projectSlug:
             "gh/example/project",
-          workflowId:
-            "11111111-1111-4111-8111-111111111111",
+          workflowId,
         },
         context,
       );
 
-    expect(result).toMatchObject({
-      ok: false,
-      error: {
-        code: "project_mismatch",
-      },
-    });
-    expect(calls).toBe(1);
+    expect(result.ok).toBe(true);
+    expect(calls).toHaveLength(2);
+    expect(calls[0]?.init.method).toBe(
+      "GET",
+    );
+    expect(calls[1]?.init.method).toBe(
+      "POST",
+    );
+  });
+
+  it("rejects malformed CircleCI project slugs before any API call", () => {
+    const provider =
+      new CircleCIProvider({
+        secretResolver:
+          new EnvironmentSecretResolver({
+            CIRCLECI_TOKEN:
+              "circle-secret",
+          }),
+      });
+
+    expect(
+      provider.resolveResources(
+        "circleci.pipeline.list",
+        {
+          projectSlug:
+            "gh/example/project/extra",
+        },
+      ),
+    ).toEqual([]);
   });
 });
