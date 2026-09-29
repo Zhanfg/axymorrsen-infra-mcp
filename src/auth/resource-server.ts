@@ -61,7 +61,7 @@ export function createResourceServerAuth(
         return await verifyBearerToken(request.headers.authorization, options);
       } catch (error) {
         return bearerAuthChallengeResponse(error, {
-          requiredScopes: options.requiredScopes,
+          requiredScopes: config.auth.requiredScopes,
           resourceMetadataUrl,
         });
       }
