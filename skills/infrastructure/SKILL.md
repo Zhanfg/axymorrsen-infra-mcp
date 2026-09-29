@@ -5,7 +5,7 @@ Use this skill only as an enhancement. The MCP server must remain fully usable t
 ## First-use workflow
 
 1. Call `infra.capabilities` and `infra.providers`.
-2. Read `docs://authentication`, `docs://providers/core4`, `docs://providers/platform5`, and `docs://security` when the task touches remote access or mutations.
+2. Read `docs://authentication`, `docs://providers/core4`, `docs://providers/platform5`, `docs://providers/runtime3`, and `docs://security` when the task touches remote access or mutations.
 3. Call `infra.permissions` when authorization is uncertain.
 4. Use `infra.explain_tool` before unfamiliar or high-risk actions.
 5. Read the current resource state before mutation when practical.
@@ -85,6 +85,30 @@ HCP Terraform:
 - `terraform.run.cancel`
 
 Terraform run creation is deliberately plan-only. Applying a plan is classified as destructive and requires step-up authorization. Secrets/API-key mutation surfaces are not exposed for Vercel or Supabase, and Sentry merge/discard/public-sharing operations are intentionally omitted.
+
+## Runtime provider pack
+
+Docker Hub:
+- `docker.repository.get`
+- `docker.tag.list`
+- `docker.tag.get`
+- `docker.repository.create`
+
+Kubernetes:
+- `kubernetes.namespace.list`
+- `kubernetes.namespace.get`
+- `kubernetes.deployment.list`
+- `kubernetes.deployment.get`
+- `kubernetes.deployment.scale`
+
+HashiCorp Vault:
+- `vault.health.get`
+- `vault.kv.metadata.list`
+- `vault.kv.metadata.get`
+- `vault.kv.metadata.update`
+- `vault.kv.metadata.delete`
+
+Docker Hub credentials are exchanged server-side for a short-lived Hub bearer token and are never exposed to MCP clients. Kubernetes scaling uses the scale subresource plus a resourceVersion precondition and requires step-up authorization. Vault tools operate only on KV v2 metadata; no tool in this pack reads or writes secret values. Metadata update/delete require step-up authorization.
 
 ## Operating principles
 

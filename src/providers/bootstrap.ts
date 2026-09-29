@@ -5,11 +5,14 @@ import { CircleCIProvider } from "./circleci.js";
 import { CloudflareProvider } from "./cloudflare.js";
 import { GitHubProvider } from "./github.js";
 import { GitLabProvider } from "./gitlab.js";
+import { DockerHubProvider } from "./docker.js";
+import { KubernetesProvider } from "./kubernetes.js";
 import { RailwayProvider } from "./railway.js";
 import { SentryProvider } from "./sentry.js";
 import { SupabaseProvider } from "./supabase.js";
 import { TerraformProvider } from "./terraform.js";
 import { VercelProvider } from "./vercel.js";
+import { VaultProvider } from "./vault.js";
 import {
   providerRegistry,
 } from "./registry.js";
@@ -139,6 +142,58 @@ export function bootstrapCoreProviders(
         "env:TFC_TOKEN",
       ...optionalBaseUrl(
         env.TERRAFORM_API_BASE_URL,
+      ),
+    }),
+  );
+
+
+  providerRegistry.register(
+    new DockerHubProvider({
+      secretResolver: secrets,
+      identifierRef:
+        env.DOCKERHUB_IDENTIFIER_REF ??
+        "env:DOCKERHUB_IDENTIFIER",
+      secretRef:
+        env.DOCKERHUB_SECRET_REF ??
+        "env:DOCKERHUB_SECRET",
+      ...optionalBaseUrl(
+        env.DOCKERHUB_API_BASE_URL,
+      ),
+    }),
+  );
+
+  providerRegistry.register(
+    new KubernetesProvider({
+      secretResolver: secrets,
+      clusterId:
+        env.KUBERNETES_CLUSTER_ID ??
+        "default-cluster",
+      credentialRef:
+        env.KUBERNETES_CREDENTIAL_REF ??
+        "env:KUBERNETES_TOKEN",
+      ...optionalBaseUrl(
+        env.KUBERNETES_API_BASE_URL,
+      ),
+    }),
+  );
+
+  providerRegistry.register(
+    new VaultProvider({
+      secretResolver: secrets,
+      instanceId:
+        env.VAULT_INSTANCE_ID ??
+        "default-vault",
+      ...(env.VAULT_NAMESPACE
+        ? {
+            vaultNamespace:
+              env.VAULT_NAMESPACE,
+          }
+        : {}),
+      credentialRef:
+        env.VAULT_CREDENTIAL_REF ??
+        "env:VAULT_TOKEN",
+      ...optionalBaseUrl(
+        env.VAULT_API_BASE_URL,
       ),
     }),
   );
