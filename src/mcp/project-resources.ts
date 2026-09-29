@@ -41,6 +41,30 @@ const resources:
     },
     {
       name:
+        "bridge-guide",
+      uri:
+        "docs://bridge",
+      path:
+        "docs/bridge.md",
+      title:
+        "Stdio remote bridge",
+      description:
+        "Connect stdio-only desktop MCP hosts to the remote infrastructure gateway.",
+    },
+    {
+      name:
+        "deployment-guide",
+      uri:
+        "docs://deployment",
+      path:
+        "docs/deployment.md",
+      title:
+        "OCI deployment",
+      description:
+        "Fail-closed Docker and OCI deployment guidance.",
+    },
+    {
+      name:
         "infrastructure-skill",
       uri:
         "skill://infrastructure/SKILL.md",

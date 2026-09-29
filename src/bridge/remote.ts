@@ -16,6 +16,10 @@ import type {
 type JsonObject =
   Record<string, unknown>;
 
+export interface RemoteBridgeOptions {
+  fetchImpl?: typeof fetch;
+}
+
 function optionalString(
   value: unknown,
 ): string | undefined {
@@ -23,16 +27,6 @@ function optionalString(
     value.length > 0
     ? value
     : undefined;
-}
-
-function jsonObject(
-  value: unknown,
-): JsonObject {
-  return typeof value === "object" &&
-    value !== null &&
-    !Array.isArray(value)
-    ? (value as JsonObject)
-    : {};
 }
 
 function resourceMetadata(
@@ -99,30 +93,42 @@ export class RemoteBridgeServer
 
 export async function createRemoteBridgeServer(
   config: RemoteBridgeConfig,
+  options: RemoteBridgeOptions = {},
 ): Promise<RemoteBridgeServer> {
-  const remote = new Client({
-    name:
-      "axymorrsen-infra-mcp-stdio-bridge",
-    version: "0.4.0",
-  });
-
-  const requestInit:
-    RequestInit | undefined =
-    config.token
-      ? {
-          headers: {
-            authorization:
-              `Bearer ${config.token}`,
-          },
-        }
-      : undefined;
+  const remote = new Client(
+    {
+      name:
+        "axymorrsen-infra-mcp-stdio-bridge",
+      version: "0.4.0",
+    },
+    {
+      versionNegotiation: {
+        mode: "auto",
+      },
+    },
+  );
 
   const transport =
     new StreamableHTTPClientTransport(
       config.remoteUrl,
-      requestInit
-        ? { requestInit }
-        : {},
+      {
+        ...(config.token
+          ? {
+              requestInit: {
+                headers: {
+                  authorization:
+                    `Bearer ${config.token}`,
+                },
+              },
+            }
+          : {}),
+        ...(options.fetchImpl
+          ? {
+              fetch:
+                options.fetchImpl,
+            }
+          : {}),
+      },
     );
 
   await remote.connect(transport);
