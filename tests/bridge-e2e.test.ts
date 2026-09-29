@@ -245,9 +245,20 @@ describe("stdio remote bridge surface", () => {
       await client.readResource({
         uri: "remote://item/42",
       });
+    const itemContent =
+      item.contents[0];
+
+    expect(itemContent).toBeDefined();
     expect(
-      JSON.stringify(item),
-    ).toContain('"id":"42"');
+      itemContent &&
+        "text" in itemContent
+        ? JSON.parse(
+            itemContent.text,
+          )
+        : undefined,
+    ).toEqual({
+      id: "42",
+    });
 
     const { prompts } =
       await client.listPrompts();
