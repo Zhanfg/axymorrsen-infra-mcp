@@ -51,7 +51,7 @@ describe("authInfoFromJwtPayload", () => {
         "github:read",
       ],
       expiresAt: 4_000_000_000,
-      resource: "https://mcp.example.com/mcp",
+      resource: new URL("https://mcp.example.com/mcp"),
       extra: {
         subject: "user-123",
         allowedResources: [
