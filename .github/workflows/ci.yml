@@ -13,7 +13,7 @@ permissions:
 jobs:
   verify:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 15
     steps:
       - name: Checkout
         uses: actions/checkout@v5
@@ -38,3 +38,21 @@ jobs:
 
       - name: Build
         run: npm run build
+
+      - name: Build OCI image
+        run: docker build --tag axymorrsen-infra-mcp:ci .
+
+      - name: Verify OCI remote binding fails closed without JWT auth
+        shell: bash
+        run: |
+          set +e
+          output="$(docker run --rm axymorrsen-infra-mcp:ci 2>&1)"
+          status=$?
+          set -e
+
+          if [ "$status" -eq 0 ]; then
+            echo "Expected container startup to fail without remote JWT auth" >&2
+            exit 1
+          fi
+
+          printf '%s' "$output" | grep -q "only permits loopback binding"
