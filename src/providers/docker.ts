@@ -392,7 +392,7 @@ export class DockerHubProvider
   }
 
   private async accessToken():
-    Promise<ProviderResult<string>> {
+    Promise<ProviderResult> {
     const cached =
       this.#cachedToken;
 
