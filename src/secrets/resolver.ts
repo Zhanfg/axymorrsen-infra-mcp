@@ -51,6 +51,12 @@ export class EnvironmentSecretResolver
     }
 
     const name = match[1];
+    if (!name) {
+      throw new Error(
+        "invalid secret reference",
+      );
+    }
+
     const value = this.#env[name];
     if (!value) {
       throw new Error(
