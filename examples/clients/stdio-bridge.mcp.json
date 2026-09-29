@@ -1,0 +1,14 @@
+{
+  "mcpServers": {
+    "axymorrsen-infra": {
+      "command": "node",
+      "args": [
+        "/absolute/path/to/axymorrsen-infra-mcp/dist/bridge/stdio-remote.js"
+      ],
+      "env": {
+        "MCP_REMOTE_URL": "https://mcp.example.com/mcp",
+        "MCP_BRIDGE_TOKEN": "<inject-from-client-secret-store>"
+      }
+    }
+  }
+}

@@ -101,6 +101,30 @@ const resources:
     },
     {
       name:
+        "release-guide",
+      uri:
+        "docs://release",
+      path:
+        "docs/release.md",
+      title:
+        "Release and distribution",
+      description:
+        "Versioned GitHub Release, GHCR, SBOM, checksum and provenance workflow.",
+    },
+    {
+      name:
+        "client-config-guide",
+      uri:
+        "docs://client-configs",
+      path:
+        "docs/client-configs.md",
+      title:
+        "Client configuration",
+      description:
+        "Portable remote and stdio MCP client configuration patterns.",
+    },
+    {
+      name:
         "infrastructure-skill",
       uri:
         "skill://infrastructure/SKILL.md",

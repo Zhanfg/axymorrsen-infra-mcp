@@ -13,13 +13,13 @@ permissions:
 jobs:
   verify:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 20
     steps:
       - name: Checkout
-        uses: actions/checkout@v5
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
 
       - name: Setup Node.js
-        uses: actions/setup-node@v5
+        uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
         with:
           node-version: "22"
           cache: npm
@@ -38,6 +38,21 @@ jobs:
 
       - name: Build
         run: npm run build
+
+      - name: Build release bundle
+        run: bash scripts/build-release-bundle.sh /tmp/release-bundle
+
+      - name: Verify release bundle
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -s /tmp/release-bundle/axymorrsen-infra-mcp-v0.8.0-node.tgz
+          test -s /tmp/release-bundle/sbom.cdx.json
+          test -s /tmp/release-bundle/SHA256SUMS
+          (
+            cd /tmp/release-bundle
+            sha256sum --check SHA256SUMS
+          )
 
       - name: Build OCI image
         run: docker build --tag axymorrsen-infra-mcp:ci .
