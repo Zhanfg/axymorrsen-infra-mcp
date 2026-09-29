@@ -18,6 +18,7 @@ if (host !== "127.0.0.1" && host !== "::1" && host !== "localhost") {
 
 const handler = createMcpHandler(() => createInfraMcpServer());
 const mcpNodeHandler = toNodeHandler(handler);
+type McpNodeRequest = Parameters<typeof mcpNodeHandler>[0];
 
 function reject(res: ServerResponse, reason: string): false {
   res.writeHead(403, { "content-type": "application/json; charset=utf-8" });
@@ -69,7 +70,14 @@ const server = createServer((req, res) => {
   }
 
   if (!validateHost(req, res) || !validateOrigin(req, res)) return;
-  void mcpNodeHandler(req, res);
+
+  if (!req.method) {
+    res.writeHead(400, { "content-type": "application/json; charset=utf-8" });
+    res.end(JSON.stringify({ error: "missing_method" }));
+    return;
+  }
+
+  void mcpNodeHandler(req as McpNodeRequest, res);
 });
 
 server.listen(port, host, () => {
