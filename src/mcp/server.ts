@@ -5,6 +5,7 @@ import { getSafetyMode } from "../core/safety.js";
 import { providerRegistry } from "../providers/registry.js";
 import { coreCapabilities } from "./catalog.js";
 import { registerCoreProviderTools } from "./provider-tools.js";
+import { registerProjectResources } from "./project-resources.js";
 
 const riskSchema = z.enum([
   "READ",
@@ -34,13 +35,14 @@ function textAndStructured<T extends Record<string, unknown>>(value: T) {
 export function createInfraMcpServer(): McpServer {
   const server = new McpServer({
     name: "axymorrsen-infra-mcp",
-    version: "0.3.0",
+    version: "0.4.0",
   });
 
   registerCoreProviderTools(
     server,
     new ProviderExecutor(providerRegistry),
   );
+  registerProjectResources(server);
 
   server.registerTool(
     "infra.capabilities",

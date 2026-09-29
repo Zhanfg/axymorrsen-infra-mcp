@@ -27,3 +27,20 @@ This public repository contains reusable code, schemas, documentation, and deplo
 ## Status
 
 Early architecture and bootstrap phase. No production credentials should be committed to this repository.
+
+
+## Portable deployment
+
+The HTTP gateway can run from the included OCI-compatible `Dockerfile`. The image uses a fail-closed remote binding: remote exposure requires JWT resource-server authentication.
+
+For desktop hosts that only support stdio, build the project and launch:
+
+```sh
+MCP_REMOTE_URL=https://mcp.example.com/mcp \
+MCP_BRIDGE_TOKEN=<REDACTED> \
+npm run bridge:stdio
+```
+
+The bridge mirrors the remote MCP surface locally while keeping GitHub, GitLab, Cloudflare, CircleCI, and other provider credentials on the server.
+
+See [docs/deployment.md](docs/deployment.md) and [docs/bridge.md](docs/bridge.md).
