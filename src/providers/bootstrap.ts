@@ -19,6 +19,14 @@ import {
 
 let bootstrapped = false;
 
+function optionalBaseUrl(
+  value: string | undefined,
+): { baseUrl: string } | {} {
+  return value
+    ? { baseUrl: value }
+    : {};
+}
+
 export function bootstrapCoreProviders(
   env: NodeJS.ProcessEnv =
     process.env,
@@ -36,12 +44,9 @@ export function bootstrapCoreProviders(
       credentialRef:
         env.GITHUB_CREDENTIAL_REF ??
         "env:GITHUB_TOKEN",
-      ...(env.GITHUB_API_BASE_URL
-        ? {
-            baseUrl:
-              env.GITHUB_API_BASE_URL,
-          }
-        : {}),
+      ...optionalBaseUrl(
+        env.GITHUB_API_BASE_URL,
+      ),
     }),
   );
 
@@ -51,12 +56,9 @@ export function bootstrapCoreProviders(
       credentialRef:
         env.GITLAB_CREDENTIAL_REF ??
         "env:GITLAB_TOKEN",
-      ...(env.GITLAB_API_BASE_URL
-        ? {
-            baseUrl:
-              env.GITLAB_API_BASE_URL,
-          }
-        : {}),
+      ...optionalBaseUrl(
+        env.GITLAB_API_BASE_URL,
+      ),
     }),
   );
 
@@ -66,12 +68,9 @@ export function bootstrapCoreProviders(
       credentialRef:
         env.CLOUDFLARE_CREDENTIAL_REF ??
         "env:CLOUDFLARE_API_TOKEN",
-      ...(env.CLOUDFLARE_API_BASE_URL
-        ? {
-            baseUrl:
-              env.CLOUDFLARE_API_BASE_URL,
-          }
-        : {}),
+      ...optionalBaseUrl(
+        env.CLOUDFLARE_API_BASE_URL,
+      ),
     }),
   );
 
@@ -81,12 +80,9 @@ export function bootstrapCoreProviders(
       credentialRef:
         env.CIRCLECI_CREDENTIAL_REF ??
         "env:CIRCLECI_TOKEN",
-      ...(env.CIRCLECI_API_BASE_URL
-        ? {
-            baseUrl:
-              env.CIRCLECI_API_BASE_URL,
-          }
-        : {}),
+      ...optionalBaseUrl(
+        env.CIRCLECI_API_BASE_URL,
+      ),
     }),
   );
 
