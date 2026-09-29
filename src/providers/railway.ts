@@ -338,9 +338,7 @@ export class RailwayProvider
     headers: Record<string, string>,
     query: string,
     variables: Record<string, unknown>,
-  ): Promise<ProviderResult<
-    Record<string, unknown>
-  >> {
+  ): Promise<ProviderResult> {
     const json = jsonBody({
       query,
       variables,
