@@ -6,7 +6,11 @@ export type RiskClass =
   | "SECURITY"
   | "BILLING";
 
-export type ProviderStatus = "available" | "planned" | "disabled" | "degraded";
+export type ProviderStatus =
+  | "available"
+  | "planned"
+  | "disabled"
+  | "degraded";
 
 export interface Capability {
   name: string;
@@ -29,6 +33,7 @@ export interface ExecutionContext {
   subject: string;
   scopes: string[];
   allowedResources: string[];
+  stepUpAuthorized: boolean;
 }
 
 export interface ProviderResult<T = unknown> {

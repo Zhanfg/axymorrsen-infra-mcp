@@ -13,6 +13,11 @@ export interface Provider {
 
   listCapabilities(): readonly Capability[];
 
+  resolveResources(
+    action: string,
+    input: unknown,
+  ): readonly string[];
+
   execute(
     action: string,
     input: unknown,

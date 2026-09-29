@@ -5,17 +5,24 @@ export interface GatewayAuthContext {
   subject: string;
   scopes: string[];
   allowedResources: string[];
+  stepUpAuthorized: boolean;
 }
 
-export function gatewayAuthContext(authInfo: AuthInfo): GatewayAuthContext {
+export function gatewayAuthContext(
+  authInfo: AuthInfo,
+): GatewayAuthContext {
   const extra = authInfo.extra ?? {};
   const subject =
-    typeof extra.subject === "string" && extra.subject.length > 0
+    typeof extra.subject === "string" &&
+    extra.subject.length > 0
       ? extra.subject
       : authInfo.clientId;
-  const allowedResources = Array.isArray(extra.allowedResources)
+  const allowedResources = Array.isArray(
+    extra.allowedResources,
+  )
     ? extra.allowedResources.filter(
-        (item): item is string => typeof item === "string",
+        (item): item is string =>
+          typeof item === "string",
       )
     : [];
 
@@ -24,5 +31,7 @@ export function gatewayAuthContext(authInfo: AuthInfo): GatewayAuthContext {
     subject,
     scopes: [...authInfo.scopes],
     allowedResources,
+    stepUpAuthorized:
+      extra.stepUpAuthorized === true,
   };
 }
