@@ -1,4 +1,7 @@
-import { McpServer } from "@modelcontextprotocol/server";
+import {
+  McpServer,
+  type AuthInfo,
+} from "@modelcontextprotocol/server";
 import * as z from "zod/v4";
 import { getSafetyMode } from "../core/safety.js";
 import { providerRegistry } from "../providers/registry.js";
@@ -29,10 +32,16 @@ function textAndStructured<T extends Record<string, unknown>>(value: T) {
   };
 }
 
-export function createInfraMcpServer(): McpServer {
+export interface InfraMcpServerOptions {
+  authInfo?: AuthInfo;
+}
+
+export function createInfraMcpServer(
+  options: InfraMcpServerOptions = {},
+): McpServer {
   const server = new McpServer({
     name: "axymorrsen-infra-mcp",
-    version: "0.1.0",
+    version: "0.2.0",
   });
 
   server.registerTool(
@@ -94,6 +103,29 @@ export function createInfraMcpServer(): McpServer {
           "Destructive, security, and billing actions require step-up authorization.",
           "The server policy engine is authoritative even when a client requests broader access.",
         ],
+      }),
+  );
+
+  server.registerTool(
+    "infra.auth_status",
+    {
+      title: "Authentication status",
+      description:
+        "Report the current MCP caller identity and granted scopes without returning the bearer token or provider credentials.",
+      annotations: { readOnlyHint: true, idempotentHint: true },
+      outputSchema: z.object({
+        authenticated: z.boolean(),
+        clientId: z.string().optional(),
+        scopes: z.array(z.string()),
+      }),
+    },
+    async () =>
+      textAndStructured({
+        authenticated: Boolean(options.authInfo),
+        ...(options.authInfo?.clientId
+          ? { clientId: options.authInfo.clientId }
+          : {}),
+        scopes: options.authInfo?.scopes ?? [],
       }),
   );
 
@@ -165,6 +197,7 @@ export function createInfraMcpServer(): McpServer {
     async () =>
       textAndStructured({
         steps: [
+          "Call infra.auth_status to confirm the current MCP identity and scopes.",
           "Call infra.capabilities before assuming an infrastructure action exists.",
           "Call infra.providers to see which adapters are available.",
           "Use infra.explain_tool before an unfamiliar or high-risk action.",
@@ -188,11 +221,12 @@ export function createInfraMcpServer(): McpServer {
           text: [
             "# Getting Started",
             "",
-            "1. Call `infra.capabilities`.",
-            "2. Call `infra.providers`.",
-            "3. Read `docs://security` before enabling write-capable provider adapters.",
-            "4. Use the narrowest capability that satisfies the user's request.",
-            "5. Verify state after mutations.",
+            "1. Call `infra.auth_status`.",
+            "2. Call `infra.capabilities`.",
+            "3. Call `infra.providers`.",
+            "4. Read `docs://security` before enabling write-capable provider adapters.",
+            "5. Use the narrowest capability that satisfies the user's request.",
+            "6. Verify state after mutations.",
           ].join("\n"),
         },
       ],
@@ -212,7 +246,8 @@ export function createInfraMcpServer(): McpServer {
             "# Security",
             "",
             "Provider credentials remain server-side.",
-            "MCP clients receive scoped authorization only.",
+            "Remote clients authenticate to the MCP resource with scoped OAuth access tokens.",
+            "The resource server validates token issuer, audience, signature, expiry, and scopes.",
             "High-risk operations are subject to server-side policy and step-up authorization.",
             "Secrets must never be returned in tool output or logs.",
           ].join("\n"),
@@ -233,7 +268,7 @@ export function createInfraMcpServer(): McpServer {
           role: "user" as const,
           content: {
             type: "text" as const,
-            text: "Discover this infrastructure gateway using infra.help, infra.capabilities, infra.providers, and infra.permissions before attempting any mutation.",
+            text: "Discover this infrastructure gateway using infra.auth_status, infra.help, infra.capabilities, infra.providers, and infra.permissions before attempting any mutation.",
           },
         },
       ],
