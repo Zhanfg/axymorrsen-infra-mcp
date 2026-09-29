@@ -67,3 +67,45 @@ export class EnvironmentSecretResolver
     return new SecretValue(value);
   }
 }
+
+export class RoutedSecretResolver
+  implements SecretResolver
+{
+  readonly #routes:
+    ReadonlyMap<string, SecretResolver>;
+
+  constructor(
+    routes: ReadonlyMap<
+      string,
+      SecretResolver
+    >,
+  ) {
+    this.#routes = routes;
+  }
+
+  async resolve(
+    reference: string,
+  ): Promise<SecretValue> {
+    const separator =
+      reference.indexOf(":");
+
+    if (separator <= 0) {
+      throw new Error(
+        "invalid secret reference",
+      );
+    }
+
+    const scheme =
+      reference.slice(0, separator);
+    const resolver =
+      this.#routes.get(scheme);
+
+    if (!resolver) {
+      throw new Error(
+        "unsupported secret reference",
+      );
+    }
+
+    return resolver.resolve(reference);
+  }
+}

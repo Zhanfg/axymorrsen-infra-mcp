@@ -1,6 +1,9 @@
 import {
   EnvironmentSecretResolver,
 } from "../secrets/resolver.js";
+import {
+  createProviderSecretResolver,
+} from "../secrets/factory.js";
 import { CircleCIProvider } from "./circleci.js";
 import { CloudflareProvider } from "./cloudflare.js";
 import { GitHubProvider } from "./github.js";
@@ -33,8 +36,12 @@ export function bootstrapCoreProviders(
 ): void {
   if (bootstrapped) return;
 
-  const secrets =
+  const envSecrets =
     new EnvironmentSecretResolver(
+      env,
+    );
+  const secrets =
+    createProviderSecretResolver(
       env,
     );
 
@@ -179,7 +186,7 @@ export function bootstrapCoreProviders(
 
   providerRegistry.register(
     new VaultProvider({
-      secretResolver: secrets,
+      secretResolver: envSecrets,
       instanceId:
         env.VAULT_INSTANCE_ID ??
         "default-vault",

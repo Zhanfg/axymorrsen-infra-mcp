@@ -49,3 +49,18 @@ The final image:
 - has an HTTP health check at `/healthz`
 
 The image does not bake any provider credential into a layer.
+
+
+## Vault-backed provider credentials
+
+For deployments that should not carry every provider token directly in the process environment, enable the Vault KV v2 resolver:
+
+```text
+SECRET_BACKEND=env,vault-kv2
+VAULT_ADDR=https://vault.example.com
+VAULT_TOKEN=<BOOTSTRAP_TOKEN>
+GITHUB_CREDENTIAL_REF=vault-kv2:secret/providers/github#token
+CLOUDFLARE_CREDENTIAL_REF=vault-kv2:secret/providers/cloudflare#token
+```
+
+The Vault bootstrap token is the only bootstrap credential required by this backend and should be narrowly scoped to the exact KV paths used for provider credentials. The MCP surface never exposes resolved secret values.
