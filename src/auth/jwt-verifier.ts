@@ -65,6 +65,8 @@ export function authInfoFromJwtPayload(
 
   const subject = payload.sub ?? clientId;
   const allowedResources = resourcesFromPayload(payload);
+  const stepUpAuthorized =
+    payload.mcp_step_up === true;
 
   return {
     token,
@@ -75,6 +77,9 @@ export function authInfoFromJwtPayload(
     extra: {
       subject,
       allowedResources,
+      ...(stepUpAuthorized
+        ? { stepUpAuthorized: true }
+        : {}),
     },
   };
 }
