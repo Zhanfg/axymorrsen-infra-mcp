@@ -53,6 +53,18 @@ const resources:
     },
     {
       name:
+        "runtime-provider-guide",
+      uri:
+        "docs://providers/runtime3",
+      path:
+        "docs/providers/runtime3.md",
+      title:
+        "Runtime provider pack",
+      description:
+        "Docker Hub, Kubernetes and HashiCorp Vault capabilities and security boundaries.",
+    },
+    {
+      name:
         "bridge-guide",
       uri:
         "docs://bridge",
