@@ -1,8 +1,10 @@
 import { McpServer } from "@modelcontextprotocol/server";
 import * as z from "zod/v4";
+import { ProviderExecutor } from "../core/executor.js";
 import { getSafetyMode } from "../core/safety.js";
 import { providerRegistry } from "../providers/registry.js";
 import { coreCapabilities } from "./catalog.js";
+import { registerCoreProviderTools } from "./provider-tools.js";
 
 const riskSchema = z.enum([
   "READ",
@@ -32,8 +34,13 @@ function textAndStructured<T extends Record<string, unknown>>(value: T) {
 export function createInfraMcpServer(): McpServer {
   const server = new McpServer({
     name: "axymorrsen-infra-mcp",
-    version: "0.1.0",
+    version: "0.3.0",
   });
+
+  registerCoreProviderTools(
+    server,
+    new ProviderExecutor(providerRegistry),
+  );
 
   server.registerTool(
     "infra.capabilities",

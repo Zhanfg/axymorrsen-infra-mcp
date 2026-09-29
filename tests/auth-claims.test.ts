@@ -80,6 +80,25 @@ describe("authInfoFromJwtPayload", () => {
     ]);
   });
 
+  it("maps an explicit MCP step-up claim", () => {
+    const info = authInfoFromJwtPayload(
+      "token-value",
+      {
+        sub: "user-123",
+        client_id: "client-abc",
+        exp: 4_000_000_000,
+        scope: "infra:connect",
+        mcp_step_up: true,
+      },
+      config,
+    );
+
+    expect(info.extra).toMatchObject({
+      subject: "user-123",
+      stepUpAuthorized: true,
+    });
+  });
+
   it("rejects tokens without expiry", () => {
     expect(() =>
       authInfoFromJwtPayload(
