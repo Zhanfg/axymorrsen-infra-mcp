@@ -23,26 +23,29 @@ export interface ResourceServerAuth {
 export function createResourceServerAuth(
   config: RuntimeConfig,
 ): ResourceServerAuth | undefined {
-  if (!config.auth || !config.publicMcpUrl) return undefined;
+  if (!config.auth || !publicMcpUrl) return undefined;
+
+  const authConfig = config.auth;
+  const publicMcpUrl = publicMcpUrl;
 
   const resourceMetadataUrl = String(
-    getOAuthProtectedResourceMetadataUrl(config.publicMcpUrl),
+    getOAuthProtectedResourceMetadataUrl(publicMcpUrl),
   );
   const resourceMetadataPath = new URL(resourceMetadataUrl).pathname;
 
   const options: BearerAuthOptions = {
     verifier: createJwtTokenVerifier({
       ...config.auth,
-      resourceUrl: config.publicMcpUrl,
+      resourceUrl: publicMcpUrl,
     }),
-    requiredScopes: config.auth.requiredScopes,
+    requiredScopes: authConfig.requiredScopes,
     resourceMetadataUrl,
   };
 
   const protectedResourceMetadata = Object.freeze({
-    resource: config.publicMcpUrl.href,
-    authorization_servers: [config.auth.issuer],
-    scopes_supported: config.auth.requiredScopes,
+    resource: publicMcpUrl.href,
+    authorization_servers: [authConfig.issuer],
+    scopes_supported: authConfig.requiredScopes,
     bearer_methods_supported: ["header"],
     resource_name: "Axymorrsen Infra MCP",
   });
@@ -61,7 +64,7 @@ export function createResourceServerAuth(
         return await verifyBearerToken(request.headers.authorization, options);
       } catch (error) {
         return bearerAuthChallengeResponse(error, {
-          requiredScopes: config.auth.requiredScopes,
+          requiredScopes: authConfig.requiredScopes,
           resourceMetadataUrl,
         });
       }
