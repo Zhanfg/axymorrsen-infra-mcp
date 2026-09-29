@@ -80,3 +80,18 @@ The optional private `mcp_resources` string array becomes the resource allowlist
 - Keep destructive/security/billing policy enforcement server-side.
 
 `MCP_AUTH_ALLOW_INSECURE_LOCALHOST=true` exists only for local integration testing and must not be enabled in production.
+
+
+## Step-up authorization
+
+High-risk provider capabilities such as destructive, security, or billing actions require an additional server-side authorization signal.
+
+The initial JWT profile recognizes the boolean claim:
+
+```json
+{
+  "mcp_step_up": true
+}
+```
+
+This claim must only be issued by the trusted authorization server after the authorization policy has performed the required step-up authentication. Clients cannot self-assert it. Tokens without this claim remain unable to execute high-risk capabilities.
