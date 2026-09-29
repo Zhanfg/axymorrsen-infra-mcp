@@ -1,6 +1,6 @@
 {
   "name": "@axymorrsen/infra-mcp",
-  "version": "0.7.0",
+  "version": "0.8.0",
   "private": true,
   "type": "module",
   "description": "Portable, security-first MCP gateway for developer infrastructure.",
@@ -14,7 +14,8 @@
     "start": "node dist/index.js",
     "bridge:stdio": "node dist/bridge/stdio-remote.js",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "test": "vitest run"
+    "test": "vitest run",
+    "bundle:release": "bash scripts/build-release-bundle.sh release"
   },
   "dependencies": {
     "@modelcontextprotocol/client": "^2.2.0",

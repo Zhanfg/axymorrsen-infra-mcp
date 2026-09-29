@@ -5,7 +5,7 @@ Use this skill only as an enhancement. The MCP server must remain fully usable t
 ## First-use workflow
 
 1. Call `infra.capabilities` and `infra.providers`.
-2. Read `docs://authentication`, `docs://secrets`, `docs://providers/core4`, `docs://providers/platform5`, `docs://providers/runtime3`, and `docs://security` when the task touches remote access or mutations.
+2. Read `docs://authentication`, `docs://secrets`, `docs://providers/core4`, `docs://providers/platform5`, `docs://providers/runtime3`, and `docs://security` when the task touches remote access or mutations. Read `docs://client-configs` and `docs://release` for installation, portability, or distribution work.
 3. Call `infra.permissions` when authorization is uncertain.
 4. Use `infra.explain_tool` before unfamiliar or high-risk actions.
 5. Read the current resource state before mutation when practical.
@@ -141,4 +141,4 @@ The local bridge may receive only:
 
 It must never receive provider tokens.
 
-See `docs://bridge` when exposed by the server or `docs/bridge.md` in the repository.
+See `docs://bridge` and `docs://client-configs` when exposed by the server. Release/distribution details are available at `docs://release`.

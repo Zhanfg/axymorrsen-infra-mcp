@@ -64,3 +64,10 @@ CLOUDFLARE_CREDENTIAL_REF=vault-kv2:secret/providers/cloudflare#token
 ```
 
 The Vault bootstrap token is the only bootstrap credential required by this backend and should be narrowly scoped to the exact KV paths used for provider credentials. The MCP surface never exposes resolved secret values.
+
+
+## Published distributions
+
+Stable releases are produced from `main` and include a prebuilt Node bundle plus a multi-architecture OCI image.
+
+See [release.md](release.md) for version/tag semantics, checksums, SBOMs, provenance attestation, and GHCR naming.
