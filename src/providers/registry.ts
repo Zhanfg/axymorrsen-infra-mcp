@@ -1,4 +1,8 @@
-import type { Capability, HealthStatus, ProviderDescriptor } from "../core/types.js";
+import type {
+  Capability,
+  HealthStatus,
+  ProviderDescriptor,
+} from "../core/types.js";
 import type { Provider } from "../core/provider.js";
 
 const plannedProviders: ProviderDescriptor[] = [
@@ -17,41 +21,78 @@ const plannedProviders: ProviderDescriptor[] = [
 ];
 
 export class ProviderRegistry {
-  readonly #providers = new Map<string, Provider>();
+  readonly #providers =
+    new Map<string, Provider>();
 
   register(provider: Provider): void {
-    if (this.#providers.has(provider.descriptor.id)) {
-      throw new Error(`provider already registered: ${provider.descriptor.id}`);
+    if (
+      this.#providers.has(
+        provider.descriptor.id,
+      )
+    ) {
+      throw new Error(
+        `provider already registered: ${provider.descriptor.id}`,
+      );
     }
-    this.#providers.set(provider.descriptor.id, provider);
+
+    this.#providers.set(
+      provider.descriptor.id,
+      provider,
+    );
+  }
+
+  getProvider(
+    id: string,
+  ): Provider | undefined {
+    return this.#providers.get(id);
   }
 
   listProviders(): ProviderDescriptor[] {
     const live = new Map(
-      [...this.#providers.values()].map((provider) => [
-        provider.descriptor.id,
-        provider.descriptor,
-      ]),
+      [...this.#providers.values()].map(
+        (provider) => [
+          provider.descriptor.id,
+          provider.descriptor,
+        ],
+      ),
     );
 
-    return plannedProviders.map((provider) => live.get(provider.id) ?? provider);
+    return plannedProviders.map(
+      (provider) =>
+        live.get(provider.id) ??
+        provider,
+    );
   }
 
   listCapabilities(): Capability[] {
-    return [...this.#providers.values()].flatMap((provider) => [
+    return [
+      ...this.#providers.values(),
+    ].flatMap((provider) => [
       ...provider.listCapabilities(),
     ]);
   }
 
-  findCapability(name: string): Capability | undefined {
-    return this.listCapabilities().find((capability) => capability.name === name);
+  findCapability(
+    name: string,
+  ): Capability | undefined {
+    return this.listCapabilities().find(
+      (capability) =>
+        capability.name === name,
+    );
   }
 
-  async health(): Promise<HealthStatus[]> {
+  async health(): Promise<
+    HealthStatus[]
+  > {
     return Promise.all(
-      [...this.#providers.values()].map((provider) => provider.healthCheck()),
+      [
+        ...this.#providers.values(),
+      ].map((provider) =>
+        provider.healthCheck(),
+      ),
     );
   }
 }
 
-export const providerRegistry = new ProviderRegistry();
+export const providerRegistry =
+  new ProviderRegistry();
