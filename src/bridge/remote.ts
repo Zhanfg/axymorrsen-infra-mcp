@@ -6,6 +6,7 @@ import {
   fromJsonSchema,
   McpServer,
   ResourceTemplate,
+  type JsonSchemaType,
 } from "@modelcontextprotocol/server";
 import * as z from "zod/v4";
 import type {
@@ -147,13 +148,13 @@ export async function createRemoteBridgeServer(
   for (const tool of toolResult.tools) {
     const inputSchema =
       fromJsonSchema<JsonObject>(
-        tool.inputSchema,
+        tool.inputSchema as JsonSchemaType,
       );
 
     const outputSchema =
       tool.outputSchema
         ? fromJsonSchema<JsonObject>(
-            tool.outputSchema,
+            tool.outputSchema as JsonSchemaType,
           )
         : undefined;
 
