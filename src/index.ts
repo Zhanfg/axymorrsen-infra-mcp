@@ -13,9 +13,11 @@ import {
   maybeServeOAuthMetadata,
 } from "./auth/http.js";
 import { createInfraMcpServer } from "./mcp/server.js";
+import { bootstrapCoreProviders } from "./providers/bootstrap.js";
 
 const authConfig = loadAuthConfig();
 const authRuntime = createAuthRuntime(authConfig);
+bootstrapCoreProviders();
 
 const host =
   process.env.MCP_BIND_HOST ??
