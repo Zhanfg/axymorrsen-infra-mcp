@@ -5,31 +5,30 @@ import type {
   ProviderDescriptor,
   ProviderResult,
 } from "../core/types.js";
-import type {
-  Provider,
-} from "../core/provider.js";
-import type {
-  SecretResolver,
-} from "../secrets/resolver.js";
-import {
-  ProviderBase,
-} from "./base.js";
+import type { Provider } from "../core/provider.js";
+import type { SecretResolver } from "../secrets/resolver.js";
+import { ProviderBase } from "./base.js";
 import {
   jsonBody,
   objectValue,
   type FetchLike,
 } from "./http.js";
 
+const githubSegment =
+  z.string().regex(
+    /^[A-Za-z0-9._-]+$/u,
+  );
+
 const repoTargetSchema = z.object({
-  owner: z.string().min(1),
-  repo: z.string().min(1),
+  owner: githubSegment,
+  repo: githubSegment,
 });
 
 const createRepoSchema = z.object({
-  owner: z.string().min(1),
+  owner: githubSegment,
   ownerType:
     z.enum(["user", "org"]),
-  name: z.string().min(1),
+  name: githubSegment,
   description:
     z.string().optional(),
   private:
@@ -183,7 +182,7 @@ export class GitHubProvider
       authorization:
         `Bearer ${token.data}`,
       "x-github-api-version":
-        "2022-11-28",
+        "2026-03-10",
     };
 
     if (
@@ -279,6 +278,7 @@ export class GitHubProvider
           parsed.data.autoInit,
       };
 
+      const json = jsonBody(body);
       const result =
         await this.http.request(
           endpoint,
@@ -286,11 +286,9 @@ export class GitHubProvider
             method: "POST",
             headers: {
               ...headers,
-              ...jsonBody(body)
-                .headers,
+              ...json.headers,
             },
-            body:
-              jsonBody(body).body,
+            body: json.body,
           },
         );
 
@@ -332,6 +330,7 @@ export class GitHubProvider
           parsed.data.prerelease,
       };
 
+      const json = jsonBody(body);
       const result =
         await this.http.request(
           `repos/${encodeURIComponent(parsed.data.owner)}/${encodeURIComponent(parsed.data.repo)}/releases`,
@@ -339,11 +338,9 @@ export class GitHubProvider
             method: "POST",
             headers: {
               ...headers,
-              ...jsonBody(body)
-                .headers,
+              ...json.headers,
             },
-            body:
-              jsonBody(body).body,
+            body: json.body,
           },
         );
 

@@ -4,6 +4,7 @@ import type {
 } from "./types.js";
 import type { SafetyMode } from "./safety.js";
 import {
+  isConcreteResource,
   resourceHasKind,
   resourcesAllowed,
 } from "./resources.js";
@@ -65,6 +66,18 @@ export function evaluateCapability(
   ) {
     return denied(
       "provider did not resolve a target resource",
+    );
+  }
+
+  const nonConcreteResource =
+    requestedResources.find(
+      (resource) =>
+        !isConcreteResource(resource),
+    );
+
+  if (nonConcreteResource) {
+    return denied(
+      "provider resolved a non-concrete target resource",
     );
   }
 

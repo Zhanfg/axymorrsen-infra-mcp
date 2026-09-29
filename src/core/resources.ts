@@ -1,10 +1,13 @@
-const RESOURCE_PATTERN = /^[a-z0-9._-]+(?::[A-Za-z0-9._/@-]+)*(?:\*)?$/u;
+const RESOURCE_PATTERN =
+  /^[a-z0-9._-]+(?::[A-Za-z0-9._/@-]+)*(?:\*)?$/u;
 
 export function isValidResourcePattern(
   pattern: string,
 ): boolean {
   if (pattern === "*") return true;
-  if (!RESOURCE_PATTERN.test(pattern)) return false;
+  if (!RESOURCE_PATTERN.test(pattern)) {
+    return false;
+  }
 
   const wildcard = pattern.indexOf("*");
   return (
@@ -13,11 +16,23 @@ export function isValidResourcePattern(
   );
 }
 
+export function isConcreteResource(
+  resource: string,
+): boolean {
+  return (
+    isValidResourcePattern(resource) &&
+    !resource.includes("*")
+  );
+}
+
 export function resourceMatches(
   pattern: string,
   resource: string,
 ): boolean {
-  if (!isValidResourcePattern(pattern)) {
+  if (
+    !isValidResourcePattern(pattern) ||
+    !isConcreteResource(resource)
+  ) {
     return false;
   }
 
@@ -39,10 +54,15 @@ export function resourcesAllowed(
     return true;
   }
 
-  return requestedResources.every((resource) =>
-    allowedPatterns.some((pattern) =>
-      resourceMatches(pattern, resource),
-    ),
+  return requestedResources.every(
+    (resource) =>
+      isConcreteResource(resource) &&
+      allowedPatterns.some((pattern) =>
+        resourceMatches(
+          pattern,
+          resource,
+        ),
+      ),
   );
 }
 
@@ -50,9 +70,14 @@ export function resourceHasKind(
   resource: string,
   kinds: readonly string[],
 ): boolean {
-  return kinds.some(
-    (kind) =>
-      resource === kind ||
-      resource.startsWith(`${kind}:`),
+  return (
+    isConcreteResource(resource) &&
+    kinds.some(
+      (kind) =>
+        resource === kind ||
+        resource.startsWith(
+          `${kind}:`,
+        ),
+    )
   );
 }
