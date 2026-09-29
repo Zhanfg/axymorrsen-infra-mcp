@@ -21,7 +21,6 @@ export interface ProviderDescriptor {
   id: string;
   displayName: string;
   status: ProviderStatus;
-  credentialRef?: string;
 }
 
 export interface ExecutionContext {
