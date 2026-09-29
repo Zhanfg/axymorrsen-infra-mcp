@@ -2,11 +2,12 @@ import type {
   Capability,
   ExecutionContext,
   HealthStatus,
+  ProviderDescriptor,
   ProviderResult,
 } from "./types.js";
 
 export interface Provider {
-  readonly id: string;
+  readonly descriptor: ProviderDescriptor;
 
   healthCheck(): Promise<HealthStatus>;
 
