@@ -7,14 +7,11 @@ import {
   loadAuthConfig,
 } from "../src/auth/config.js";
 
-const secureEnv = {
-  MCP_AUTH_MODE: "jwt",
+const commonEnv = {
   MCP_PUBLIC_URL:
     "https://mcp.example.com/mcp",
   MCP_AUTH_ISSUER_URL:
     "https://auth.example.com",
-  MCP_AUTH_JWKS_URL:
-    "https://auth.example.com/.well-known/jwks.json",
   MCP_AUTHORIZATION_ENDPOINT:
     "https://auth.example.com/oauth2/authorize",
   MCP_TOKEN_ENDPOINT:
@@ -33,7 +30,10 @@ describe("loadAuthConfig", () => {
   it("loads a secure exact-audience JWT resource-server configuration", () => {
     const config =
       loadAuthConfig({
-        ...secureEnv,
+        ...commonEnv,
+        MCP_AUTH_MODE: "jwt",
+        MCP_AUTH_JWKS_URL:
+          "https://auth.example.com/.well-known/jwks.json",
         MCP_AUTH_REQUIRED_SCOPES:
           "infra:connect github:read",
         MCP_AUTH_SCOPES_SUPPORTED:
@@ -70,10 +70,13 @@ describe("loadAuthConfig", () => {
     });
   });
 
-  it("supports client-id audience validation for shared DCR audiences", () => {
+  it("supports client-id audience validation for shared DCR JWT audiences", () => {
     const config =
       loadAuthConfig({
-        ...secureEnv,
+        ...commonEnv,
+        MCP_AUTH_MODE: "jwt",
+        MCP_AUTH_JWKS_URL:
+          "https://auth.example.com/.well-known/jwks.json",
         MCP_AUTH_AUDIENCE_MODE:
           "client_id",
         MCP_AUTH_REQUIRED_SCOPES:
@@ -86,22 +89,62 @@ describe("loadAuthConfig", () => {
       mode: "jwt",
       audienceMode:
         "client_id",
+    });
+  });
+
+  it("loads opaque-token introspection mode", () => {
+    const config =
+      loadAuthConfig({
+        ...commonEnv,
+        MCP_AUTH_MODE:
+          "introspection",
+        MCP_AUTH_INTROSPECTION_ENDPOINT:
+          "https://auth.example.com/oauth/v2/introspect",
+        MCP_AUTH_INTROSPECTION_CLIENT_ID:
+          "api-client",
+        MCP_AUTH_INTROSPECTION_CLIENT_SECRET:
+          "secret",
+        MCP_AUTH_INTROSPECTION_AUDIENCE:
+          "project-123",
+        MCP_AUTH_REQUIRED_SCOPES:
+          "openid",
+        MCP_AUTH_SCOPES_SUPPORTED:
+          "openid project-audience",
+      });
+
+    expect(config).toMatchObject({
+      mode: "introspection",
+      introspectionClientId:
+        "api-client",
+      introspectionAudience:
+        "project-123",
       requiredScopes: [
         "openid",
       ],
-      scopesSupported: [
-        "openid",
-        "profile",
-        "email",
-        "offline_access",
-      ],
     });
+  });
+
+  it("requires introspection credentials in introspection mode", () => {
+    expect(() =>
+      loadAuthConfig({
+        ...commonEnv,
+        MCP_AUTH_MODE:
+          "introspection",
+        MCP_AUTH_INTROSPECTION_ENDPOINT:
+          "https://auth.example.com/oauth/v2/introspect",
+      }),
+    ).toThrow(
+      /MCP_AUTH_INTROSPECTION_CLIENT_ID/u,
+    );
   });
 
   it("rejects unsupported audience modes", () => {
     expect(() =>
       loadAuthConfig({
-        ...secureEnv,
+        ...commonEnv,
+        MCP_AUTH_MODE: "jwt",
+        MCP_AUTH_JWKS_URL:
+          "https://auth.example.com/.well-known/jwks.json",
         MCP_AUTH_AUDIENCE_MODE:
           "none",
       }),
@@ -113,9 +156,17 @@ describe("loadAuthConfig", () => {
   it("rejects insecure remote URLs by default", () => {
     expect(() =>
       loadAuthConfig({
-        ...secureEnv,
+        ...commonEnv,
+        MCP_AUTH_MODE:
+          "introspection",
         MCP_PUBLIC_URL:
           "http://mcp.example.com/mcp",
+        MCP_AUTH_INTROSPECTION_ENDPOINT:
+          "https://auth.example.com/oauth/v2/introspect",
+        MCP_AUTH_INTROSPECTION_CLIENT_ID:
+          "api-client",
+        MCP_AUTH_INTROSPECTION_CLIENT_SECRET:
+          "secret",
       }),
     ).toThrow(
       /MCP_PUBLIC_URL must use https/u,

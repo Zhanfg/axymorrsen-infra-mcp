@@ -6,129 +6,105 @@ Axymorrsen Infra MCP is an OAuth resource server. It does not issue end-user acc
 
 ### `disabled`
 
-Local development only.
-
-- The server binds to loopback by default.
-- Non-loopback binding is rejected.
-- Provider credentials are still never accepted from MCP clients.
+Local development only. Non-loopback binding is rejected.
 
 ### `jwt`
 
-Remote OAuth resource-server mode.
+Locally verifies JWT access tokens using the authorization server's JWKS. Use this only when the authorization server guarantees JWT access tokens.
 
-The gateway:
+### `introspection`
 
-1. Publishes RFC 9728 Protected Resource Metadata.
-2. Advertises the external authorization server.
-3. Requires a Bearer access token for `/mcp`.
-4. Verifies JWT signature through the configured remote JWKS.
-5. Verifies issuer, expiry, audience policy, and required OAuth scopes.
-6. Converts verified claims into MCP `AuthInfo`.
-7. Keeps provider credentials in the server-side secret backend.
+Validates Bearer tokens through the OAuth 2.0 token introspection endpoint. This supports both opaque and JWT access tokens and is the recommended mode for ZITADEL Dynamic Client Registration.
 
-The authorization server remains an independent component and can be replaced without changing provider adapters.
+ZITADEL's DCR implementation creates OIDC applications with Bearer access tokens. The resource server therefore must not assume that every access token is a locally verifiable JWT.
 
-## Audience validation
+## ZITADEL DCR + introspection profile
 
-Two audience modes are supported.
+Create an API application in the MCP project and choose Basic authentication. Its client ID and client secret authenticate the MCP resource server to ZITADEL's introspection endpoint.
 
-### `exact`
-
-Default mode.
+The DCR clients must request the MCP project's audience scope:
 
 ```text
-MCP_AUTH_AUDIENCE_MODE=exact
-MCP_AUTH_AUDIENCE=https://mcp.example.com/mcp
+urn:zitadel:iam:org:project:id:<PROJECT_ID>:aud
 ```
 
-The JWT `aud` claim must contain the configured exact audience.
+This places the resource-server project in the issued token's audience. ZITADEL introspection returns `active=true` only when the introspecting API is authorized for that token.
 
-### `client_id`
-
-For authorization servers whose dynamically registered clients share a project audience.
+Example:
 
 ```text
-MCP_AUTH_AUDIENCE_MODE=client_id
+MCP_AUTH_MODE=introspection
+
+MCP_PUBLIC_URL=https://mcp.example.com/mcp
+MCP_AUTH_ISSUER_URL=https://instance.zitadel.cloud
+MCP_AUTHORIZATION_ENDPOINT=https://instance.zitadel.cloud/oauth/v2/authorize
+MCP_TOKEN_ENDPOINT=https://instance.zitadel.cloud/oauth/v2/token
+MCP_REGISTRATION_ENDPOINT=https://instance.zitadel.cloud/oauth/v2/register
+
+MCP_AUTH_INTROSPECTION_ENDPOINT=https://instance.zitadel.cloud/oauth/v2/introspect
+MCP_AUTH_INTROSPECTION_CLIENT_ID=<API_CLIENT_ID>
+MCP_AUTH_INTROSPECTION_CLIENT_SECRET=<API_CLIENT_SECRET>
+MCP_AUTH_INTROSPECTION_AUDIENCE=<PROJECT_ID>
+
+MCP_AUTH_REQUIRED_SCOPES=openid,urn:zitadel:iam:org:project:id:<PROJECT_ID>:aud
+MCP_AUTH_SCOPES_SUPPORTED=openid,profile,email,offline_access,urn:zitadel:iam:org:project:id:<PROJECT_ID>:aud
 ```
 
-The JWT signature, issuer and expiry are verified first. The gateway then requires:
+The introspection verifier checks:
 
-- a `client_id` or `azp` claim
-- the JWT `aud` claim to contain that exact client identifier
+1. HTTPS endpoint configuration.
+2. HTTP success from the introspection endpoint.
+3. `active=true`.
+4. issuer match.
+5. token expiry.
+6. `client_id` presence.
+7. optional configured audience presence.
+8. required OAuth scopes through the MCP server auth middleware.
 
-The subject claim is never accepted as a client identifier in this mode.
+The introspection client secret is never returned through MCP tools, resources, health responses, or audit records.
 
-This mode is suitable for ZITADEL Dynamic Client Registration, where JWT access tokens for DCR applications share the `ZITADEL DCR` project audience and may contain multiple registered client IDs. It avoids treating a shared project audience as sufficient proof of the calling client.
+## JWT audience validation
 
-## ZITADEL DCR profile
+JWT mode supports:
 
-A compatible Railway configuration uses ZITADEL's standard endpoints:
+- `exact`: the JWT audience must contain `MCP_AUTH_AUDIENCE`.
+- `client_id`: the JWT audience must contain the verified `client_id` / `azp`.
 
-```text
-MCP_AUTH_AUDIENCE_MODE=client_id
-MCP_AUTH_REQUIRED_SCOPES=openid
-MCP_AUTH_SCOPES_SUPPORTED=openid profile email offline_access
-MCP_REGISTRATION_ENDPOINT=https://<instance>/oauth/v2/register
-```
-
-ZITADEL Dynamic Client Registration must be enabled separately on the instance. MCP-compatible open registration also requires ZITADEL's unauthenticated DCR mode.
-
-Dynamically registered clients are stored in ZITADEL's dedicated `ZITADEL DCR` project; a separately created project ID is therefore not used as the fixed MCP audience in `client_id` mode.
+The `client_id` mode remains available for authorization servers that issue JWTs to dynamically registered clients, but ZITADEL DCR's default Bearer-token behavior is better served by introspection mode.
 
 ## Resource metadata
 
-For a public resource URL such as:
+For:
 
 ```text
 https://mcp.example.com/mcp
 ```
 
-the gateway serves path-aware Protected Resource Metadata at:
+the gateway serves RFC 9728 Protected Resource Metadata at:
 
 ```text
 https://mcp.example.com/.well-known/oauth-protected-resource/mcp
 ```
 
-Unauthenticated MCP calls receive an OAuth Bearer challenge containing the resource metadata URL.
+Unauthenticated MCP calls receive an OAuth Bearer challenge referencing that metadata document.
 
-## JWT claims
+## Resource authorization
 
-Scopes may be supplied by either:
+OAuth authentication and infrastructure authorization are separate layers.
 
-- `scope`: space-separated string
-- `scp`: string or string array
+Provider actions require both:
 
-The client identifier is normally resolved from:
+- the provider capability scope
+- an allowed concrete MCP resource
 
-1. `client_id`
-2. `azp`
-3. `sub` only in exact-audience mode
-
-The optional private `mcp_resources` string array becomes the resource allowlist used by the gateway policy layer.
+The optional `mcp_resources` and `mcp_step_up` fields are consumed when supplied by a trusted authorization source. A later server-side grant backend can supply the same policy data without placing provider authorization in identity tokens.
 
 ## Production requirements
 
-- Use HTTPS for the public MCP URL and authorization server.
-- Use short-lived access tokens.
-- Rotate authorization-server signing keys.
-- Restrict allowed `Host` values.
-- For browser-originated traffic, explicitly allow only trusted origins.
-- Never store provider secrets in access-token claims.
+- Use HTTPS.
+- Use short-lived OAuth access tokens.
+- Store introspection client credentials only in the deployment secret store.
+- Restrict the introspection API application to the MCP project.
 - Never expose provider credentials to MCP clients.
-- Keep destructive/security/billing policy enforcement server-side.
-
-`MCP_AUTH_ALLOW_INSECURE_LOCALHOST=true` exists only for local integration testing and must not be enabled in production.
-
-## Step-up authorization
-
-High-risk provider capabilities such as destructive, security, or billing actions require an additional server-side authorization signal.
-
-The initial JWT profile recognizes:
-
-```json
-{
-  "mcp_step_up": true
-}
-```
-
-This claim must only be issued by the trusted authorization server after the authorization policy has performed the required step-up authentication. Clients cannot self-assert it. Tokens without this claim remain unable to execute high-risk capabilities.
+- Keep destructive/security/billing enforcement server-side.
+- Leave `MCP_AUTH_ALLOW_INSECURE_LOCALHOST=false` in production.

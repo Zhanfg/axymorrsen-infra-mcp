@@ -21,7 +21,7 @@ bootstrapCoreProviders();
 
 const host =
   process.env.MCP_BIND_HOST ??
-  (authRuntime.mode === "jwt" ? "0.0.0.0" : "127.0.0.1");
+  (authRuntime.mode !== "disabled" ? "0.0.0.0" : "127.0.0.1");
 const port = Number(process.env.PORT ?? process.env.MCP_PORT ?? "3000");
 
 if (!Number.isInteger(port) || port <= 0 || port > 65535) {
@@ -35,7 +35,7 @@ if (
   host !== "localhost"
 ) {
   throw new Error(
-    "MCP_AUTH_MODE=disabled only permits loopback binding; configure JWT auth before remote exposure",
+    "MCP_AUTH_MODE=disabled only permits loopback binding; configure remote OAuth authentication before exposure",
   );
 }
 
@@ -126,7 +126,7 @@ async function handleRequest(
   res: ServerResponse,
 ): Promise<void> {
   if (
-    authRuntime.mode === "jwt" &&
+    authRuntime.mode !== "disabled" &&
     (await maybeServeOAuthMetadata(req, res, authRuntime))
   ) {
     return;
@@ -134,7 +134,7 @@ async function handleRequest(
 
   const url = new URL(
     req.url ?? "/",
-    authRuntime.mode === "jwt"
+    authRuntime.mode !== "disabled"
       ? authRuntime.config.resourceUrl.origin
       : `http://${req.headers.host ?? "localhost"}`,
   );
