@@ -37,7 +37,7 @@ function textAndStructured<T extends Record<string, unknown>>(value: T) {
 export function createInfraMcpServer(): McpServer {
   const server = new McpServer({
     name: "axymorrsen-infra-mcp",
-    version: "0.8.0",
+    version: "0.9.0",
   });
 
   const providerExecutor = new ProviderExecutor(providerRegistry);

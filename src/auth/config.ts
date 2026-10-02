@@ -1,19 +1,15 @@
-export type AuthMode = "disabled" | "jwt";
+export type AuthMode =
+  | "disabled"
+  | "jwt"
+  | "introspection";
+
 export type JwtAudienceMode =
   | "exact"
   | "client_id";
 
-export interface DisabledAuthConfig {
-  mode: "disabled";
-}
-
-export interface JwtAuthConfig {
-  mode: "jwt";
+interface RemoteAuthConfigBase {
   resourceUrl: URL;
-  audienceMode: JwtAudienceMode;
-  audience: string;
   issuer: URL;
-  jwksUrl: URL;
   authorizationEndpoint: URL;
   tokenEndpoint: URL;
   registrationEndpoint?: URL;
@@ -25,9 +21,34 @@ export interface JwtAuthConfig {
   allowInsecureLocalhost: boolean;
 }
 
+export interface DisabledAuthConfig {
+  mode: "disabled";
+}
+
+export interface JwtAuthConfig
+  extends RemoteAuthConfigBase {
+  mode: "jwt";
+  audienceMode: JwtAudienceMode;
+  audience: string;
+  jwksUrl: URL;
+}
+
+export interface IntrospectionAuthConfig
+  extends RemoteAuthConfigBase {
+  mode: "introspection";
+  introspectionEndpoint: URL;
+  introspectionClientId: string;
+  introspectionClientSecret: string;
+  introspectionAudience?: string;
+}
+
+export type RemoteAuthConfig =
+  | JwtAuthConfig
+  | IntrospectionAuthConfig;
+
 export type GatewayAuthConfig =
   | DisabledAuthConfig
-  | JwtAuthConfig;
+  | RemoteAuthConfig;
 
 type Env = Record<
   string,
@@ -41,7 +62,7 @@ function requireEnv(
   const value = env[name]?.trim();
   if (!value) {
     throw new Error(
-      `${name} is required when MCP_AUTH_MODE=jwt`,
+      `${name} is required for remote authentication`,
     );
   }
   return value;
@@ -173,32 +194,17 @@ function parseAudienceMode(
   return mode;
 }
 
-export function loadAuthConfig(
-  env: Env = process.env,
-): GatewayAuthConfig {
-  const mode = (
-    env.MCP_AUTH_MODE
-      ?.trim()
-      .toLowerCase() ||
-    "disabled"
-  ) as AuthMode;
-
-  if (mode === "disabled") {
-    return { mode };
-  }
-
-  if (mode !== "jwt") {
-    throw new Error(
-      `unsupported MCP_AUTH_MODE: ${mode}`,
-    );
-  }
-
-  const allowInsecureLocalhost =
-    parseBoolean(
-      env.MCP_AUTH_ALLOW_INSECURE_LOCALHOST,
-      false,
-    );
-
+function sharedRemoteConfig(
+  env: Env,
+  allowInsecureLocalhost: boolean,
+): Omit<
+  RemoteAuthConfigBase,
+  "registrationEndpoint" |
+  "clientIdMetadataDocumentSupported"
+> & {
+  registrationEndpoint?: URL;
+  clientIdMetadataDocumentSupported?: boolean;
+} {
   const resourceUrl =
     parseSecureUrl(
       requireEnv(
@@ -216,16 +222,6 @@ export function loadAuthConfig(
         "MCP_AUTH_ISSUER_URL",
       ),
       "MCP_AUTH_ISSUER_URL",
-      allowInsecureLocalhost,
-    );
-
-  const jwksUrl =
-    parseSecureUrl(
-      requireEnv(
-        env,
-        "MCP_AUTH_JWKS_URL",
-      ),
-      "MCP_AUTH_JWKS_URL",
       allowInsecureLocalhost,
     );
 
@@ -320,19 +316,9 @@ export function loadAuthConfig(
       ),
     );
 
-  const config: JwtAuthConfig = {
-    mode,
+  const config = {
     resourceUrl,
-    audienceMode:
-      parseAudienceMode(
-        env.MCP_AUTH_AUDIENCE_MODE,
-      ),
-    audience:
-      env.MCP_AUTH_AUDIENCE
-        ?.trim() ||
-      resourceUrl.toString(),
     issuer,
-    jwksUrl,
     authorizationEndpoint,
     tokenEndpoint,
     requiredScopes,
@@ -340,22 +326,114 @@ export function loadAuthConfig(
     allowedHosts,
     allowedOrigins,
     allowInsecureLocalhost,
+    ...(registrationEndpoint
+      ? { registrationEndpoint }
+      : {}),
   };
-
-  if (registrationEndpoint) {
-    config.registrationEndpoint =
-      registrationEndpoint;
-  }
 
   if (
     env.MCP_AUTH_CLIENT_ID_METADATA_DOCUMENT_SUPPORTED !==
     undefined
   ) {
-    config.clientIdMetadataDocumentSupported =
-      parseBoolean(
-        env.MCP_AUTH_CLIENT_ID_METADATA_DOCUMENT_SUPPORTED,
-      );
+    return {
+      ...config,
+      clientIdMetadataDocumentSupported:
+        parseBoolean(
+          env.MCP_AUTH_CLIENT_ID_METADATA_DOCUMENT_SUPPORTED,
+        ),
+    };
   }
 
   return config;
+}
+
+export function loadAuthConfig(
+  env: Env = process.env,
+): GatewayAuthConfig {
+  const mode = (
+    env.MCP_AUTH_MODE
+      ?.trim()
+      .toLowerCase() ||
+    "disabled"
+  ) as AuthMode;
+
+  if (mode === "disabled") {
+    return { mode };
+  }
+
+  if (
+    mode !== "jwt" &&
+    mode !== "introspection"
+  ) {
+    throw new Error(
+      `unsupported MCP_AUTH_MODE: ${mode}`,
+    );
+  }
+
+  const allowInsecureLocalhost =
+    parseBoolean(
+      env.MCP_AUTH_ALLOW_INSECURE_LOCALHOST,
+      false,
+    );
+
+  const shared =
+    sharedRemoteConfig(
+      env,
+      allowInsecureLocalhost,
+    );
+
+  if (mode === "jwt") {
+    return {
+      ...shared,
+      mode,
+      audienceMode:
+        parseAudienceMode(
+          env.MCP_AUTH_AUDIENCE_MODE,
+        ),
+      audience:
+        env.MCP_AUTH_AUDIENCE
+          ?.trim() ||
+        shared.resourceUrl.toString(),
+      jwksUrl:
+        parseSecureUrl(
+          requireEnv(
+            env,
+            "MCP_AUTH_JWKS_URL",
+          ),
+          "MCP_AUTH_JWKS_URL",
+          allowInsecureLocalhost,
+        ),
+    };
+  }
+
+  return {
+    ...shared,
+    mode,
+    introspectionEndpoint:
+      parseSecureUrl(
+        requireEnv(
+          env,
+          "MCP_AUTH_INTROSPECTION_ENDPOINT",
+        ),
+        "MCP_AUTH_INTROSPECTION_ENDPOINT",
+        allowInsecureLocalhost,
+      ),
+    introspectionClientId:
+      requireEnv(
+        env,
+        "MCP_AUTH_INTROSPECTION_CLIENT_ID",
+      ),
+    introspectionClientSecret:
+      requireEnv(
+        env,
+        "MCP_AUTH_INTROSPECTION_CLIENT_SECRET",
+      ),
+    ...(env.MCP_AUTH_INTROSPECTION_AUDIENCE
+      ?.trim()
+      ? {
+          introspectionAudience:
+            env.MCP_AUTH_INTROSPECTION_AUDIENCE.trim(),
+        }
+      : {}),
+  };
 }
