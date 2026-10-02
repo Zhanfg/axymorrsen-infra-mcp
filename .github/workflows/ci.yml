@@ -46,7 +46,8 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          test -s /tmp/release-bundle/axymorrsen-infra-mcp-v0.8.0-node.tgz
+          version="$(node -p "require('./package.json').version")"
+          test -s "/tmp/release-bundle/axymorrsen-infra-mcp-v${version}-node.tgz"
           test -s /tmp/release-bundle/sbom.cdx.json
           test -s /tmp/release-bundle/SHA256SUMS
           (

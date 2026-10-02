@@ -22,11 +22,58 @@ The gateway:
 2. Advertises the external authorization server.
 3. Requires a Bearer access token for `/mcp`.
 4. Verifies JWT signature through the configured remote JWKS.
-5. Verifies issuer, audience, expiry, and required MCP scopes.
+5. Verifies issuer, expiry, audience policy, and required OAuth scopes.
 6. Converts verified claims into MCP `AuthInfo`.
 7. Keeps provider credentials in the server-side secret backend.
 
 The authorization server remains an independent component and can be replaced without changing provider adapters.
+
+## Audience validation
+
+Two audience modes are supported.
+
+### `exact`
+
+Default mode.
+
+```text
+MCP_AUTH_AUDIENCE_MODE=exact
+MCP_AUTH_AUDIENCE=https://mcp.example.com/mcp
+```
+
+The JWT `aud` claim must contain the configured exact audience.
+
+### `client_id`
+
+For authorization servers whose dynamically registered clients share a project audience.
+
+```text
+MCP_AUTH_AUDIENCE_MODE=client_id
+```
+
+The JWT signature, issuer and expiry are verified first. The gateway then requires:
+
+- a `client_id` or `azp` claim
+- the JWT `aud` claim to contain that exact client identifier
+
+The subject claim is never accepted as a client identifier in this mode.
+
+This mode is suitable for ZITADEL Dynamic Client Registration, where JWT access tokens for DCR applications share the `ZITADEL DCR` project audience and may contain multiple registered client IDs. It avoids treating a shared project audience as sufficient proof of the calling client.
+
+## ZITADEL DCR profile
+
+A compatible Railway configuration uses ZITADEL's standard endpoints:
+
+```text
+MCP_AUTH_AUDIENCE_MODE=client_id
+MCP_AUTH_REQUIRED_SCOPES=openid
+MCP_AUTH_SCOPES_SUPPORTED=openid profile email offline_access
+MCP_REGISTRATION_ENDPOINT=https://<instance>/oauth/v2/register
+```
+
+ZITADEL Dynamic Client Registration must be enabled separately on the instance. MCP-compatible open registration also requires ZITADEL's unauthenticated DCR mode.
+
+Dynamically registered clients are stored in ZITADEL's dedicated `ZITADEL DCR` project; a separately created project ID is therefore not used as the fixed MCP audience in `client_id` mode.
 
 ## Resource metadata
 
@@ -42,29 +89,20 @@ the gateway serves path-aware Protected Resource Metadata at:
 https://mcp.example.com/.well-known/oauth-protected-resource/mcp
 ```
 
-and exposes the compatibility authorization-server metadata route supported by the MCP SDK.
-
 Unauthenticated MCP calls receive an OAuth Bearer challenge containing the resource metadata URL.
 
 ## JWT claims
-
-Required standard validation:
-
-- signature from the configured JWKS
-- `iss`
-- `aud`
-- `exp`
 
 Scopes may be supplied by either:
 
 - `scope`: space-separated string
 - `scp`: string or string array
 
-The client identifier is resolved from the first available claim:
+The client identifier is normally resolved from:
 
 1. `client_id`
 2. `azp`
-3. `sub`
+3. `sub` only in exact-audience mode
 
 The optional private `mcp_resources` string array becomes the resource allowlist used by the gateway policy layer.
 
@@ -81,12 +119,11 @@ The optional private `mcp_resources` string array becomes the resource allowlist
 
 `MCP_AUTH_ALLOW_INSECURE_LOCALHOST=true` exists only for local integration testing and must not be enabled in production.
 
-
 ## Step-up authorization
 
 High-risk provider capabilities such as destructive, security, or billing actions require an additional server-side authorization signal.
 
-The initial JWT profile recognizes the boolean claim:
+The initial JWT profile recognizes:
 
 ```json
 {
