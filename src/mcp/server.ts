@@ -8,6 +8,7 @@ import { registerCoreProviderTools } from "./provider-tools.js";
 import { registerPlatformProviderTools } from "./provider-tools-platform5.js";
 import { registerRuntimeProviderTools } from "./provider-tools-runtime3.js";
 import { registerProjectResources } from "./project-resources.js";
+import { gatewayAuthContext } from "../auth/context.js";
 
 const riskSchema = z.enum([
   "READ",
@@ -54,6 +55,25 @@ export function createInfraMcpServer(): McpServer {
     providerExecutor,
   );
   registerProjectResources(server);
+
+  server.registerTool(
+    "infra.identity",
+    {
+      description: "Return the current caller's verified identity and grants without credentials.",
+      annotations: { readOnlyHint: true, idempotentHint: true },
+      outputSchema: z.object({
+        authenticated: z.boolean(),
+        clientId: z.string().optional(),
+        subject: z.string().optional(),
+        scopes: z.array(z.string()).optional(),
+        allowedResources: z.array(z.string()).optional(),
+        stepUpAuthorized: z.boolean().optional(),
+      }),
+    },
+    async (ctx) => textAndStructured(ctx.http?.authInfo
+      ? { authenticated: true, ...gatewayAuthContext(ctx.http.authInfo) }
+      : { authenticated: false }),
+  );
 
   server.registerTool(
     "infra.capabilities",

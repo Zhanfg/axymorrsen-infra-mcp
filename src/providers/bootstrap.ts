@@ -24,7 +24,7 @@ let bootstrapped = false;
 
 function optionalBaseUrl(
   value: string | undefined,
-): { baseUrl: string } | {} {
+): { baseUrl?: string } {
   return value
     ? { baseUrl: value }
     : {};

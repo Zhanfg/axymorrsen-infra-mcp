@@ -3,6 +3,12 @@
 node_modules
 dist
 coverage
+.tmp
+.cache
+release
+*.pem
+*.key
+credentials.json
 .env
 .env.*
 !.env.example

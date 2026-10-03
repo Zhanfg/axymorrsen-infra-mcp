@@ -15,7 +15,8 @@
     "bridge:stdio": "node dist/bridge/stdio-remote.js",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "vitest run",
-    "bundle:release": "bash scripts/build-release-bundle.sh release"
+    "bundle:release": "bash scripts/build-release-bundle.sh release",
+    "lint": "eslint src tests eslint.config.mjs"
   },
   "dependencies": {
     "@modelcontextprotocol/client": "^2.2.0",
@@ -25,9 +26,12 @@
     "zod": "^4.6.5"
   },
   "devDependencies": {
+    "@eslint/js": "^10.0.1",
     "@types/node": "^24.0.0",
+    "eslint": "^10.12.0",
     "tsx": "^4.20.0",
     "typescript": "^6.0.0",
+    "typescript-eslint": "^8.71.0",
     "vitest": "^5.0.2"
   }
 }
