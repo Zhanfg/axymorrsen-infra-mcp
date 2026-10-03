@@ -5,6 +5,7 @@ on:
     branches:
       - main
       - "feat/**"
+      - "fix/**"
   pull_request:
 
 permissions:
@@ -33,8 +34,20 @@ jobs:
       - name: Typecheck
         run: npm run typecheck
 
+      - name: Lint
+        run: npm run lint
+
       - name: Test
         run: npm test
+        env:
+          MCP_INTEGRATION_URL: ${{ vars.MCP_INTEGRATION_URL }}
+          MCP_INTEGRATION_TOKEN_ENDPOINT: ${{ vars.MCP_INTEGRATION_TOKEN_ENDPOINT }}
+          MCP_INTEGRATION_CLIENT_ID: ${{ vars.MCP_INTEGRATION_CLIENT_ID }}
+          MCP_INTEGRATION_SCOPE: ${{ vars.MCP_INTEGRATION_SCOPE }}
+          MCP_INTEGRATION_EXPECTED_SUBJECT: ${{ vars.MCP_INTEGRATION_EXPECTED_SUBJECT }}
+          MCP_INTEGRATION_ACCESS_TOKEN: ${{ secrets.MCP_INTEGRATION_ACCESS_TOKEN }}
+          MCP_INTEGRATION_CLIENT_SECRET: ${{ secrets.MCP_INTEGRATION_CLIENT_SECRET }}
+          MCP_INTEGRATION_REFRESH_TOKEN: ${{ secrets.MCP_INTEGRATION_REFRESH_TOKEN }}
 
       - name: Build
         run: npm run build
@@ -55,10 +68,19 @@ jobs:
             sha256sum --check SHA256SUMS
           )
 
-      - name: Build OCI image
-        run: docker build --tag axymorrsen-infra-mcp:ci .
+      - name: Setup Docker Buildx
+        uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3
 
-      - name: Verify OCI remote binding fails closed without JWT auth
+      - name: Build OCI image
+        uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6
+        with:
+          context: .
+          load: true
+          tags: axymorrsen-infra-mcp:ci
+          cache-from: type=gha,scope=ci
+          cache-to: type=gha,scope=ci,mode=max
+
+      - name: Verify OCI remote binding fails closed without authentication
         shell: bash
         run: |
           set +e

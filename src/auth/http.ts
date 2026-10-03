@@ -10,6 +10,8 @@ import {
   type AuthInfo,
   type OAuthMetadata,
   type OAuthTokenVerifier,
+  OAuthError,
+  OAuthErrorCode,
 } from "@modelcontextprotocol/server";
 import type {
   GatewayAuthConfig,
@@ -21,6 +23,7 @@ import {
 import {
   JwtTokenVerifier,
 } from "./jwt-verifier.js";
+import { AuthenticationServiceError, authenticationDiagnostic } from "./diagnostics.js";
 
 export interface DisabledAuthRuntime {
   mode: "disabled";
@@ -43,7 +46,7 @@ function buildOAuthMetadata(
 ): OAuthMetadata {
   const metadata: OAuthMetadata = {
     issuer:
-      config.issuer.toString(),
+      config.issuerIdentifier ?? config.issuer.toString(),
     authorization_endpoint:
       config.authorizationEndpoint.toString(),
     token_endpoint:
@@ -246,11 +249,26 @@ export async function authenticateMcpRequest(
   };
 
   try {
-    return await verifyBearerToken(
-      req.headers.authorization,
+    const header = req.headers.authorization;
+    const match = header?.match(/^Bearer[\t ]+([A-Za-z0-9\-._~+/]+=*)$/iu);
+    if (!match?.[1]) {
+      throw new OAuthError(OAuthErrorCode.InvalidToken, header ? "Malformed Bearer credential" : "Authentication required");
+    }
+    authenticationDiagnostic({ event: "authentication", tokenType: match[1].split(".").length === 3 ? "jwt" : "opaque" });
+    const auth = await verifyBearerToken(
+      `Bearer ${match[1]}`,
       options,
     );
+    authenticationDiagnostic({ event: "authentication", decision: "allowed" });
+    return auth;
   } catch (error) {
+    if (error instanceof AuthenticationServiceError) {
+      authenticationDiagnostic({ event: "authentication", decision: "unavailable", reason: error.reason });
+      res.writeHead(503, { "content-type": "application/json", "retry-after": "5", "cache-control": "no-store" });
+      res.end(JSON.stringify({ error: "temporarily_unavailable", error_description: "Authentication service unavailable; retry later" }));
+      return null;
+    }
+    authenticationDiagnostic({ event: "authentication", decision: "denied", reason: error instanceof OAuthError ? error.code : "internal_error" });
     await writeWebResponse(
       bearerAuthChallengeResponse(
         error,

@@ -87,6 +87,7 @@ The CI gate runs:
 ```text
 npm ci --ignore-scripts
 npm audit --audit-level=moderate
+npm run lint
 npm run typecheck
 npm test
 npm run build
@@ -94,3 +95,5 @@ release bundle + checksum verification
 OCI image build
 unauthenticated remote fail-closed check
 ```
+
+The automated suite includes live local HTTP authentication/protocol fixtures for JWT and opaque tokens. Optional deployed integration tests skip without test credentials. See [authentication.md](docs/authentication.md) for Railway, ZITADEL and MCP Inspector setup and error diagnostics.

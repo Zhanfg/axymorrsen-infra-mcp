@@ -277,3 +277,37 @@ describe("IntrospectionTokenVerifier", () => {
     );
   });
 });
+
+describe("introspection response and transport contracts", () => {
+  const valid = () => ({ active: true, iss: "https://issuer.example.com", exp: Math.floor(Date.now() / 1000) + 300, client_id: "fixture-client", scope: "openid", aud: ["393033796045257671"] });
+  it.each([
+    { active: "true" }, { active: true }, { ...valid(), exp: "4000000000" },
+    { ...valid(), scope: ["openid"] }, { ...valid(), aud: [12] }, { ...valid(), mcp_resources: [12] },
+    { ...valid(), mcp_step_up: "true" }, { ...valid(), client_id: "" },
+  ])("rejects malformed provider responses %j", async payload => {
+    const verifier = new IntrospectionTokenVerifier(config(), { fetchImpl: (async () => response(payload)) as typeof fetch });
+    await expect(verifier.verifyAccessToken("fixture-token")).rejects.toMatchObject({ name: "AuthenticationServiceError", reason: "introspection_invalid_response" });
+  });
+  it("encodes Basic client authentication and token form fields without altering them", async () => {
+    const c = { ...config(), introspectionClientId: "client:id +", introspectionClientSecret: "fixture:secret&+" };
+    const verifier = new IntrospectionTokenVerifier(c, { fetchImpl: (async (_url, init) => {
+      const basic = new Headers(init?.headers).get("authorization")?.slice(6) ?? "";
+      const fields = Buffer.from(basic, "base64").toString().split(":");
+      const decode = (value: string) => new URLSearchParams(`value=${value}`).get("value");
+      expect(decode(fields[0] ?? "")).toBe(c.introspectionClientId);
+      expect(decode(fields[1] ?? "")).toBe(c.introspectionClientSecret);
+      expect((init?.body as URLSearchParams).get("token")).toBe("opaque+token/with=padding");
+      expect(init?.redirect).toBe("error");
+      return response(valid());
+    }) as typeof fetch });
+    await expect(verifier.verifyAccessToken("opaque+token/with=padding")).resolves.toMatchObject({ clientId: "fixture-client" });
+  });
+  it("accepts JWT-shaped tokens through introspection without local JWT parsing", async () => {
+    const verifier = new IntrospectionTokenVerifier(config(), { fetchImpl: (async () => response(valid())) as typeof fetch });
+    await expect(verifier.verifyAccessToken("fixture.jwt.shaped")).resolves.toMatchObject({ clientId: "fixture-client" });
+  });
+  it("does not expose exception strings from network failures", async () => {
+    const verifier = new IntrospectionTokenVerifier(config(), { fetchImpl: (async () => { throw new Error("fixture-token fixture-secret private upstream details"); }) as typeof fetch });
+    await expect(verifier.verifyAccessToken("fixture-token")).rejects.toThrow("Authentication service unavailable");
+  });
+});

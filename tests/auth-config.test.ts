@@ -173,3 +173,22 @@ describe("loadAuthConfig", () => {
     );
   });
 });
+
+describe("legacy ZITADEL configuration compatibility", () => {
+  it("accepts legacy names and preserves the exact issuer identifier", () => {
+    const result = loadAuthConfig({
+      MCP_AUTH_MODE: "introspection", MCP_PUBLIC_URL: "https://mcp.example.com/mcp",
+      MCP_AUTHORIZATION_ENDPOINT: "https://auth.example.com/authorize", MCP_TOKEN_ENDPOINT: "https://auth.example.com/token",
+      ZITADEL_ISSUER: "https://auth.example.com", ZITADEL_INTROSPECTION_URL: "https://auth.example.com/introspect",
+      ZITADEL_CLIENT_ID: "api-fixture", ZITADEL_CLIENT_SECRET: "fixture-secret",
+    });
+    expect(result).toMatchObject({ mode: "introspection", issuerIdentifier: "https://auth.example.com", introspectionClientId: "api-fixture", introspectionClientSecret: "fixture-secret" });
+  });
+  it("prefers canonical MCP names over legacy aliases", () => {
+    const result = loadAuthConfig({
+      ...commonEnv, MCP_AUTH_MODE: "introspection", MCP_AUTH_INTROSPECTION_ENDPOINT: "https://auth.example.com/introspect",
+      MCP_AUTH_INTROSPECTION_CLIENT_ID: "canonical", MCP_AUTH_INTROSPECTION_CLIENT_SECRET: "fixture-secret", ZITADEL_CLIENT_ID: "legacy",
+    });
+    expect(result).toMatchObject({ introspectionClientId: "canonical" });
+  });
+});

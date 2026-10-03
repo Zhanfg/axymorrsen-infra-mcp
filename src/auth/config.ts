@@ -10,6 +10,8 @@ export type JwtAudienceMode =
 interface RemoteAuthConfigBase {
   resourceUrl: URL;
   issuer: URL;
+  // OAuth issuer identifiers must not gain a slash through URL serialization.
+  issuerIdentifier?: string;
   authorizationEndpoint: URL;
   tokenEndpoint: URL;
   registrationEndpoint?: URL;
@@ -137,6 +139,10 @@ function parseSecureUrl(
     throw new Error(
       `${name} must be a valid absolute URL`,
     );
+  }
+
+  if (url.username || url.password || url.hash) {
+    throw new Error(`${name} must not contain credentials or a fragment`);
   }
 
   if (url.protocol === "https:") {
@@ -319,6 +325,7 @@ function sharedRemoteConfig(
   const config = {
     resourceUrl,
     issuer,
+    issuerIdentifier: requireEnv(env, "MCP_AUTH_ISSUER_URL"),
     authorizationEndpoint,
     tokenEndpoint,
     requiredScopes,
@@ -350,6 +357,13 @@ function sharedRemoteConfig(
 export function loadAuthConfig(
   env: Env = process.env,
 ): GatewayAuthConfig {
+  env = {
+    ...env,
+    MCP_AUTH_ISSUER_URL: env.MCP_AUTH_ISSUER_URL ?? env.ZITADEL_ISSUER,
+    MCP_AUTH_INTROSPECTION_ENDPOINT: env.MCP_AUTH_INTROSPECTION_ENDPOINT ?? env.ZITADEL_INTROSPECTION_URL,
+    MCP_AUTH_INTROSPECTION_CLIENT_ID: env.MCP_AUTH_INTROSPECTION_CLIENT_ID ?? env.ZITADEL_CLIENT_ID,
+    MCP_AUTH_INTROSPECTION_CLIENT_SECRET: env.MCP_AUTH_INTROSPECTION_CLIENT_SECRET ?? env.ZITADEL_CLIENT_SECRET,
+  };
   const mode = (
     env.MCP_AUTH_MODE
       ?.trim()

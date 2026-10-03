@@ -12,6 +12,7 @@ import {
 import type {
   JwtAuthConfig,
 } from "./config.js";
+import { AuthenticationServiceError } from "./diagnostics.js";
 
 function stringClaim(
   payload: JWTPayload,
@@ -215,7 +216,7 @@ export class JwtTokenVerifier
     try {
       const verifyOptions = {
         issuer:
-          this.#config.issuer.toString(),
+          this.#config.issuerIdentifier ?? this.#config.issuer.toString(),
         ...(this.#config
           .audienceMode === "exact"
           ? {
@@ -239,6 +240,10 @@ export class JwtTokenVerifier
         this.#config,
       );
     } catch (error) {
+      if (error instanceof TypeError || (error instanceof Error && "code" in error &&
+        ["ERR_JWKS_TIMEOUT", "ERR_JWKS_INVALID", "ERR_JOSE_GENERIC"].includes(String(error.code)))) {
+        throw new AuthenticationServiceError("jwks_unavailable");
+      }
       if (
         error instanceof OAuthError &&
         error.code ===

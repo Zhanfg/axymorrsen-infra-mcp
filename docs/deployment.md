@@ -10,7 +10,7 @@ The image sets:
 MCP_BIND_HOST=0.0.0.0
 ```
 
-Remote binding is rejected unless `MCP_AUTH_MODE=jwt` is configured. Starting the image without remote authentication therefore fails instead of exposing an unauthenticated infrastructure control plane.
+Remote binding is rejected unless `MCP_AUTH_MODE=jwt` or `MCP_AUTH_MODE=introspection` is configured. Starting the image without remote authentication therefore fails instead of exposing an unauthenticated infrastructure control plane.
 
 ## Build
 
@@ -71,3 +71,33 @@ The Vault bootstrap token is the only bootstrap credential required by this back
 Stable releases are produced from `main` and include a prebuilt Node bundle plus a multi-architecture OCI image.
 
 See [release.md](release.md) for version/tag semantics, checksums, SBOMs, provenance attestation, and GHCR naming.
+
+## Railway
+
+The checked-in `railway.json` selects Docker, starts `node dist/index.js`, and checks `/ready` before activating a deployment. Configure the public URL and authenticated mode using [authentication.md](authentication.md). Railway supplies `PORT`; the image binds `0.0.0.0`. `/health` is independent of external identity-provider availability, `/ready` reports initialized configuration, and `/healthz` remains compatible with older deployments.
+
+Never commit deployment environment exports. Keep the introspection API client secret and provider tokens in Railway's variable/secret store. A successful deployment health check does not prove OAuth token validation: verify an authenticated initialize, tools/list and infra.identity on the deployed version.
+
+### Building behind a trusted TLS proxy
+
+Standard Railway/GitHub builds use the checked-in Dockerfile without additional secret mounts. Railway rejected the optional `npm_ca` mount during Dockerfile validation, so that local proxy configuration must stay in a temporary Dockerfile. Where a local build requires an organization CA, generate the temporary file below and pass the existing proxy build arguments. The CA is mounted only during installation; neither the CA nor proxy credentials are copied into the final image. TLS verification remains enabled.
+
+```sh
+mkdir -p .tmp
+python3 - <<'PY'
+from pathlib import Path
+source = Path('Dockerfile').read_text()
+source = source.replace(
+    'RUN npm ci --ignore-scripts --no-audit',
+    'RUN --mount=type=secret,id=npm_ca '
+    'NODE_EXTRA_CA_CERTS=/run/secrets/npm_ca '
+    'npm ci --ignore-scripts --no-audit',
+)
+Path('.tmp/Dockerfile.proxy').write_text(source)
+PY
+docker build \
+  --file .tmp/Dockerfile.proxy \
+  --build-arg HTTPS_PROXY --build-arg HTTP_PROXY --build-arg NO_PROXY \
+  --secret id=npm_ca,src=/path/to/trusted-proxy-ca.crt \
+  -t axymorrsen-infra-mcp .
+```
