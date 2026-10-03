@@ -1,6 +1,6 @@
 {
   "name": "@axymorrsen/infra-mcp",
-  "version": "0.9.0-hotfix1",
+  "version": "0.9.0",
   "private": true,
   "type": "module",
   "description": "Portable, security-first MCP gateway for developer infrastructure.",
