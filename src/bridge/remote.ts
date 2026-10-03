@@ -71,7 +71,7 @@ export class RemoteBridgeServer
     super({
       name:
         "axymorrsen-infra-mcp-stdio-bridge",
-      version: "0.9.0",
+      version: "0.9.0-hotfix1",
     });
 
     this.#remote = remote;
@@ -99,7 +99,7 @@ export async function createRemoteBridgeServer(
     {
       name:
         "axymorrsen-infra-mcp-stdio-bridge",
-      version: "0.9.0",
+      version: "0.9.0-hotfix1",
     },
     {
       versionNegotiation: {

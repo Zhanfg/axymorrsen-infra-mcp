@@ -160,7 +160,10 @@ export class IntrospectionTokenVerifier
         );
 
       if (!response.ok) {
-        throw invalidToken();
+        throw invalidToken(
+          "upstream_http",
+          response.status,
+        );
       }
 
       let raw: unknown;
@@ -168,7 +171,9 @@ export class IntrospectionTokenVerifier
         raw =
           await response.json();
       } catch {
-        throw invalidToken();
+        throw invalidToken(
+          "invalid_json",
+        );
       }
 
       const payload =
@@ -177,7 +182,9 @@ export class IntrospectionTokenVerifier
       if (
         payload.active !== true
       ) {
-        throw invalidToken();
+        throw invalidToken(
+          "inactive",
+        );
       }
 
       const issuer =
@@ -190,7 +197,9 @@ export class IntrospectionTokenVerifier
               .issuer.toString(),
           )
       ) {
-        throw invalidToken();
+        throw invalidToken(
+          "issuer_mismatch",
+        );
       }
 
       const expiresAt =
@@ -206,7 +215,9 @@ export class IntrospectionTokenVerifier
             Date.now() / 1000,
           )
       ) {
-        throw invalidToken();
+        throw invalidToken(
+          "expired_or_missing_exp",
+        );
       }
 
       const clientId =
@@ -214,7 +225,9 @@ export class IntrospectionTokenVerifier
           payload.client_id,
         );
       if (!clientId) {
-        throw invalidToken();
+        throw invalidToken(
+          "missing_client_id",
+        );
       }
 
       if (
@@ -227,7 +240,9 @@ export class IntrospectionTokenVerifier
             .introspectionAudience,
         )
       ) {
-        throw invalidToken();
+        throw invalidToken(
+          "audience_mismatch",
+        );
       }
 
       const subject =
@@ -280,12 +295,36 @@ export class IntrospectionTokenVerifier
         throw error;
       }
 
-      throw invalidToken();
+      throw invalidToken(
+        "unexpected_error",
+      );
     }
   }
 }
 
-function invalidToken(): OAuthError {
+type IntrospectionRejectReason =
+  | "upstream_http"
+  | "invalid_json"
+  | "inactive"
+  | "issuer_mismatch"
+  | "expired_or_missing_exp"
+  | "missing_client_id"
+  | "audience_mismatch"
+  | "unexpected_error";
+
+function invalidToken(
+  reason: IntrospectionRejectReason,
+  status?: number,
+): OAuthError {
+  const suffix =
+    status === undefined
+      ? ""
+      : ` status=${status}`;
+
+  process.stderr.write(
+    `[auth:introspection] reject reason=${reason}${suffix}\n`,
+  );
+
   return new OAuthError(
     OAuthErrorCode.InvalidToken,
     "access token validation failed",
