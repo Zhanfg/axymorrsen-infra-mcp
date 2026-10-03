@@ -80,10 +80,23 @@ Never commit deployment environment exports. Keep the introspection API client s
 
 ### Building behind a trusted TLS proxy
 
-Where the build environment requires an organization CA, provide it through the optional BuildKit secret `npm_ca`, and pass existing proxy build arguments. The CA is mounted only during installation; neither the CA nor proxy credentials are copied into the final image. TLS verification remains enabled. Standard Railway/GitHub builds need no extra CA.
+Standard Railway/GitHub builds use the checked-in Dockerfile without additional secret mounts. Railway rejected the optional `npm_ca` mount during Dockerfile validation, so that local proxy configuration must stay in a temporary Dockerfile. Where a local build requires an organization CA, generate the temporary file below and pass the existing proxy build arguments. The CA is mounted only during installation; neither the CA nor proxy credentials are copied into the final image. TLS verification remains enabled.
 
 ```sh
+mkdir -p .tmp
+python3 - <<'PY'
+from pathlib import Path
+source = Path('Dockerfile').read_text()
+source = source.replace(
+    'RUN npm ci --ignore-scripts --no-audit',
+    'RUN --mount=type=secret,id=npm_ca '
+    'NODE_EXTRA_CA_CERTS=/run/secrets/npm_ca '
+    'npm ci --ignore-scripts --no-audit',
+)
+Path('.tmp/Dockerfile.proxy').write_text(source)
+PY
 docker build \
+  --file .tmp/Dockerfile.proxy \
   --build-arg HTTPS_PROXY --build-arg HTTP_PROXY --build-arg NO_PROXY \
   --secret id=npm_ca,src=/path/to/trusted-proxy-ca.crt \
   -t axymorrsen-infra-mcp .
